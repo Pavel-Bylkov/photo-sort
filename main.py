@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import os
+import time
+import datetime
+import shutil
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QApplication, QWidget, QLabel, QPushButton, QLineEdit, QGroupBox, QCheckBox,
@@ -39,6 +42,56 @@ class ImageProcessor:
             os.mkdir(path)
         image_path = os.path.join(path, self.filename)
         self.image.save(image_path)
+
+    def get_date_taken(self):
+        return self.image._getexif()[36867]  # дату лучше брать из Exif.Image.DateTime
+
+
+def create_month_folders():
+    """Функция создает папки месяцев от 01 до 12"""
+    for x in range(1, 13):  # '{0:02d}'.format(x) где x — месяц от 1 до 12
+        if x > 9:
+            if not os.path.exists(str(x)):
+                os.makedirs(str(x))
+        else:
+            if not os.path.exists(f'0{x}'):
+                os.makedirs(f'0{x}')
+
+def mod_date(file):
+    t = os.path.getmtime(file)
+    return datetime.datetime.fromtimestamp(t)
+
+def create_folders(path_from, path_to):
+    """пройдясь по папке, функция соберет все расширения файлов, а заодно,
+        определит какой год у файла. Для каждого года будет создана своя папка, а в ней,
+        в свою очередь, будут созданы папки с месяцами"""
+    os.chdir(path_from)
+    a = []  # ['AAE', 'MOV', 'JPG', 'PNG']
+    for root, dirs, files in os.walk(path_from):
+        for file in files:
+            if os.path.splitext(file)[1] not in a:   # проверить нужен ли метод lower()
+                a.append(os.path.splitext(file)[1])
+            if os.path.splitext(file)[1] in a:
+                year = str(mod_date(file))[:10][:4]
+                if not os.path.exists(f'{path_to}{os.sep}{year}'):
+                    os.makedirs(f'{path_to}{os.sep}{year}')
+                os.chdir(f'{path_to}{os.sep}{year}')
+                create_month_folders()
+                os.chdir(path_from)
+    return a
+
+def move_files(path, a):
+    """Функция пройдется по папке со свалкой фото, перенося фото в соответствующие папки"""
+    os.chdir(path)
+    try:
+        for root, dirs, files in os.walk(path):
+            for file in files:
+                if file[-3:] in a:
+                    year = str(mod_date(file))[:10][:4]
+                    month = str(mod_date(file))[:10][5:7]  # месяц создания фото
+                    shutil.move(file, f'{year}{os.sep}{month}{os.sep}{file}')  # перенос файла в папку
+    except EnvironmentError:
+        ('Вроде готово') # программа завершается с ошибкой, в цикле не найдя последнего файла
 
 
 def main():
