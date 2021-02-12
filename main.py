@@ -3,8 +3,8 @@
 import os
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QApplication, QWidget, QLabel, QPushButton,
-                            QListWidget, QHBoxLayout, QVBoxLayout, QFileDialog)
+from PyQt5.QtWidgets import (QApplication, QWidget, QLabel, QPushButton, QLineEdit, QGroupBox, QCheckBox,
+                            QRadioButton, QListWidget, QHBoxLayout, QVBoxLayout, QFileDialog)
 from PyQt5.QtGui import QPixmap # оптимизированная для показа на экране картинка
 
 from PIL import Image
@@ -32,12 +32,6 @@ class ImageProcessor:
         lb_image.setPixmap(pixmapimage)
         lb_image.show()
 
-    def do_bw(self):
-        self.image = self.image.convert("L")
-        self.saveImage()
-        self.image_path = os.path.join(self.dir, self.save_dir, self.filename)
-        self.showImage()
-
     def saveImage(self):
         ''' сохраняет копию файла в подпапке '''
         path = os.path.join(self.dir, self.save_dir)
@@ -50,14 +44,15 @@ class ImageProcessor:
 def main():
     def create_widgets():
         """Создаем виджеты для приложения"""
-        global lb_image, btn_dir, lw_files, btn_left, btn_right, btn_flip, btn_sharp, btn_bw
+        global lb_image, lb_from, btn_from, path_from, lb_to, btn_to, path_to, lw_dirs, lw_files, file_info, lb_filesize
+        global btn_left, btn_right, btn_flip, btn_save, check_copy, rbtn_1, rbtn_2, rbtn_3, RadioGroupBox, lb_ratio, lb_data
 
         lb_image = QLabel("Выберите файл для просмотра")
         lb_from = QLabel("Источник:")
         btn_from = QPushButton("Выбор папки")
         path_from = QLineEdit("")
         path_from.setPlaceholderText("Введите путь или нажмите выбрать")
-        lb_from = QLabel("Результат:")
+        lb_to = QLabel("Результат:")
         btn_to = QPushButton("Выбор папки")
         path_to = QLineEdit("")
         path_to.setPlaceholderText("Введите путь или нажмите выбрать")
@@ -65,6 +60,9 @@ def main():
         lw_files = QListWidget()
 
         file_info = QGroupBox("Информация о файле:")
+        lb_filesize = QLabel('Размер файла:')
+        lb_ratio = QLabel('Разрешение:')
+        lb_data = QLabel("Дата и время изменения:")
 
         btn_left = QPushButton("Лево")
         btn_right = QPushButton("Право")
@@ -73,46 +71,60 @@ def main():
 
         check_copy = QCheckBox('Сортировать в исходной папке (без копирования)')
 
-        rbtn_1 = QRadioButton('Вариант 1')
-        rbtn_2 = QRadioButton('Вариант 2')
-        rbtn_3 = QRadioButton('Вариант 3')
+        RadioGroupBox = QGroupBox("Обработка видео файлов:")
+        rbtn_1 = QRadioButton('Вместе с фото')
+        rbtn_2 = QRadioButton('Вместе, но в отдельных папках')
+        rbtn_3 = QRadioButton('Отсортировать отдельно')
 
 
     def layout_widgets():
         """ Привязка виджетов к линиям и главному окну"""
-        main_col = QHBoxLayout()  # Основная вертикальная линия
-        row = QHBoxLayout()  # Основная строка
-        col1 = QVBoxLayout()  # делится на два столбца
-        col2 = QVBoxLayout()
-        col1.addWidget(btn_dir)  # в первом - кнопка выбора директории
-        col1.addWidget(lw_files)  # и список файлов
+        main_col = QVBoxLayout()  # Основная вертикальная линия
+        row1 = QHBoxLayout()
+        row1.addWidget(lb_from)
+        row1.addWidget(path_from)
+        row1.addWidget(btn_from)
 
-        col2.addWidget(lb_image, 95)  # вo втором - картинка
+        row2 = QHBoxLayout()
+        row2.addWidget(lw_dirs, 50)
+        row2.addWidget(lw_files, 50)
+        col1 = QVBoxLayout()
+        row5 = QHBoxLayout()
+        col3 = QVBoxLayout()
+        col3.addWidget(lb_image, 150, alignment=(Qt.AlignCenter))
+        row5.addLayout(col3, 100)
+        row6 = QHBoxLayout()
+        row6.addWidget(btn_left)
+        row6.addWidget(btn_right)
+        row6.addWidget(btn_flip)
+        row6.addWidget(btn_save)
+        col1.addLayout(row6)
+        col1.addLayout(row5)
+        col_box_info = QVBoxLayout()
+        col_box_info.addWidget(lb_filesize, alignment=(Qt.AlignLeft))
+        col_box_info.addWidget(lb_ratio, alignment=(Qt.AlignLeft))
+        col_box_info.addWidget(lb_data, alignment=(Qt.AlignLeft))
+        file_info.setLayout(col_box_info)
+        col1.addWidget(file_info)
+        row2.addLayout(col1, 150)
 
-        row_tools = QHBoxLayout()  # и строка кнопок
-        row_tools.addWidget(btn_left)
-        row_tools.addWidget(btn_right)
-        row_tools.addWidget(btn_flip)
-        row_tools.addWidget(btn_sharp)
-        row_tools.addWidget(btn_bw)
-        col2.addLayout(row_tools)
+        row3 = QHBoxLayout()
+        row3.addWidget(lb_to)
+        row3.addWidget(path_to)
+        row3.addWidget(btn_to)
 
-        layout_ans1 = QHBoxLayout()
-        layout_ans2 = QVBoxLayout()
-        layout_ans3 = QVBoxLayout()
-        layout_ans2.addWidget(rbtn_1)
-        layout_ans2.addWidget(rbtn_2)
-        layout_ans3.addWidget(rbtn_3)
-        layout_ans3.addWidget(rbtn_4)
+        row4 = QHBoxLayout()
+        row4.addWidget(rbtn_1)
+        row4.addWidget(rbtn_2)
+        row4.addWidget(rbtn_3)
+        RadioGroupBox.setLayout(row4)
 
-        layout_ans1.addLayout(layout_ans2)
-        layout_ans1.addLayout(layout_ans3)
-
-        RadioGroupBox.setLayout(layout_ans1)
-
-        row.addLayout(col1, 20)
-        row.addLayout(col2, 80)
-        main_win.setLayout(row)
+        main_col.addLayout(row1)
+        main_col.addLayout(row2)
+        main_col.addWidget(check_copy)
+        main_col.addLayout(row3)
+        main_col.addWidget(RadioGroupBox)
+        main_win.setLayout(main_col)
 
     def chooseWorkdir():
         global workdir  # обращаемся к глобальной переменнуой
@@ -126,7 +138,7 @@ def main():
                     result.append(filename)
         return result
 
-    def showFilenamesList():
+    def open_folder_from():
         extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp']
         chooseWorkdir()
         filenames = filter(os.listdir(workdir), extensions)
@@ -136,13 +148,13 @@ def main():
 
     app = QApplication([])
     main_win = QWidget()
-    main_win.resize(700, 500)
+    main_win.resize(1600, 900)
     main_win.setWindowTitle('Smart Foto Folder Switcher')
 
     create_widgets()
     layout_widgets()
 
-    btn_dir.clicked.connect(showFilenamesList)
+    btn_from.clicked.connect(open_folder_from)
 
     workimage = ImageProcessor()
 
@@ -158,8 +170,6 @@ def main():
 
     """lw_files.currentRowChanged.connect(showChosenImage)"""
     lw_files.itemClicked.connect(showChosenImage)
-
-    btn_bw.clicked.connect(workimage.do_bw)
 
     main_win.show()
     app.exec_()
