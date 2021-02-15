@@ -13,21 +13,41 @@ from PyQt5.QtGui import QPixmap # оптимизированная для пок
 from PIL import Image
 
 
-class ImageProcessor:
+class ImagesProcessor:
     def __init__(self):
-        """Конструктор класса"""
         self.image = None
-        self.dir = ""
+        self.workdir = ""
         self.filename = ""
-        self.save_dir = "Modified" + os.sep  # os.sep - добавляет слеш разделитель между именем папки и файлом
+        self.filenames = []
+        self.save_dir = ""
+        self.extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp']
 
-    def loadImage(self, cur_dir, filename):
+    def choose_workdir(self):
+        self.workdir = QFileDialog.getExistingDirectory()
+        if self.workdir is None or self.workdir == "":
+            return False
+        return True
+
+    def filter(self):
+        for filename in os.listdir(self.workdir):
+            for ext in self.extensions:
+                if filename.endswith(ext):
+                    self.filenames.append(filename)
+
+    def open_folder_from(self):
+        if self.choose_workdir():
+            self.filter()
+            lw_files.clear()
+            for filename in self.filenames:
+                lw_files.addItem(filename)
+
+    def load_image(self, cur_dir, filename):
         self.dir = cur_dir
         self.filename = filename
         self.image_path = cur_dir + os.sep + filename  # os.path.join(dir, filename)  #
         self.image = Image.open(self.image_path)
 
-    def showImage(self):
+    def show_image(self):
         lb_image.hide()
         pixmapimage = QPixmap(self.image_path)
         w, h = lb_image.width(), lb_image.height()
@@ -35,7 +55,7 @@ class ImageProcessor:
         lb_image.setPixmap(pixmapimage)
         lb_image.show()
 
-    def saveImage(self):
+    def save_image(self):
         ''' сохраняет копию файла в подпапке '''
         path = os.path.join(self.dir, self.save_dir)
         if not (os.path.exists(path) or os.path.isdir(path)):
@@ -50,6 +70,7 @@ class ImageProcessor:
 def create_month_folders():
     """Функция создает папки месяцев от 01 до 12"""
     for x in range(1, 13):  # '{0:02d}'.format(x) где x — месяц от 1 до 12
+        # if os.path.exists(f'{i:02}') else os.makedirs(f'{i:02}')
         if x > 9:
             if not os.path.exists(str(x)):
                 os.makedirs(str(x))
@@ -69,8 +90,8 @@ def create_folders(path_from, path_to):
     a = []  # ['AAE', 'MOV', 'JPG', 'PNG']
     for root, dirs, files in os.walk(path_from):
         for file in files:
-            if os.path.splitext(file)[1] not in a:   # проверить нужен ли метод lower()
-                a.append(os.path.splitext(file)[1])
+            if os.path.splitext(file)[1].lower() not in a:   # проверить нужен ли метод
+                a.append(os.path.splitext(file)[1].lower())
             if os.path.splitext(file)[1] in a:
                 year = str(mod_date(file))[:10][:4]
                 if not os.path.exists(f'{path_to}{os.sep}{year}'):
@@ -179,25 +200,6 @@ def main():
         main_col.addWidget(RadioGroupBox)
         main_win.setLayout(main_col)
 
-    def chooseWorkdir():
-        global workdir  # обращаемся к глобальной переменнуой
-        workdir = QFileDialog.getExistingDirectory()
-
-    def filter(files, extensions):
-        result = []
-        for filename in files:
-            for ext in extensions:
-                if filename.endswith(ext):
-                    result.append(filename)
-        return result
-
-    def open_folder_from():
-        extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp']
-        chooseWorkdir()
-        filenames = filter(os.listdir(workdir), extensions)
-        lw_files.clear()
-        for filename in filenames:
-            lw_files.addItem(filename)
 
     app = QApplication([])
     main_win = QWidget()
@@ -207,22 +209,17 @@ def main():
     create_widgets()
     layout_widgets()
 
-    btn_from.clicked.connect(open_folder_from)
+    workimages = ImagesProcessor()
 
-    workimage = ImageProcessor()
+    btn_from.clicked.connect(workimages.open_folder_from)
 
-    def showChosenImage():
-        """if lw_files.currentRow() >= 0:
-            filename = lw_files.currentItem().text()
-            workimage.loadImage(workdir, filename)
-            workimage.showImage(lb_image)"""
+    def show_chosen_image():
         if lw_files.selectedItems():
             name = lw_files.selectedItems()[0].text()
-            workimage.loadImage(workdir, name)
-            workimage.showImage()
+            workimages.load_image(name)
+            workimages.show_image()
 
-    """lw_files.currentRowChanged.connect(showChosenImage)"""
-    lw_files.itemClicked.connect(showChosenImage)
+    lw_files.itemClicked.connect(show_chosen_image)
 
     main_win.show()
     app.exec_()
