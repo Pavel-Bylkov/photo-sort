@@ -101,6 +101,7 @@ def create_folders(path_from, path_to):
                 os.chdir(path_from)
     return a
 
+
 def move_files(path, a):
     """Функция пройдется по папке со свалкой фото, перенося фото в соответствующие папки"""
     os.chdir(path)
