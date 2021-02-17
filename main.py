@@ -18,9 +18,9 @@ class ImagesProcessor:
         self.image = None
         self.workdir = ""
         self.filename = ""
-        self.filenames = []
         self.save_dir = ""
-        self.extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp']
+        self.img_ext = ['.jpg', '.jpeg', '.png', '.gif', '.bmp']
+        self.numfiles = 0
 
     def choose_workdir(self):
         self.workdir = QFileDialog.getExistingDirectory()
@@ -29,17 +29,42 @@ class ImagesProcessor:
         return True
 
     def filter(self):
-        for filename in os.listdir(self.workdir):
-            for ext in self.extensions:
-                if filename.endswith(ext):
-                    self.filenames.append(filename)
+        lw_files.clear()
+        self.filenames = []
+        self.extensions = [] # заменить на выделенные
+        for root, dirs, files in os.walk(self.workdir):
+            for file in files:
+                ext = os.path.splitext(file.lower())[1]
+                if ext in self.extensions:
+                    self.filenames.append(file.lower())
+                    lw_files.addItem(file.lower())
+        self.numfiles = len(self.filenames)
+        lb_info.setText(f"Выбрано {self.numfiles} файлов")
 
     def open_folder_from(self):
         if self.choose_workdir():
-            self.filter()
+            self.extensions = []
+            self.filenames = []
+            self.dirs = []
+            for root, dirs, files in os.walk(self.workdir):
+                self.filenames += files
+                self.dirs += dirs
+            for i in range(len(self.filenames)):
+                self.filenames[i] = self.filenames[i].lower()
+                ext = os.path.splitext(self.filenames[i])[1]
+                if ext not in self.extensions:
+                    self.extensions.append(ext)
+            lw_dirs.clear()
+            for dir in self.dirs:
+                lw_dirs.addItem(dir)
             lw_files.clear()
             for filename in self.filenames:
                 lw_files.addItem(filename)
+            lw_ext.clear()
+            for ext in self.extensions:
+                lw_ext.addItem(ext)
+            self.numfiles = len(self.filenames)
+            lb_info.setText(f"Выбрано {self.numfiles} файлов")
 
     def load_image(self, cur_dir, filename):
         self.dir = cur_dir
@@ -121,6 +146,7 @@ def main():
         """Создаем виджеты для приложения"""
         global lb_image, lb_from, btn_from, path_from, lb_to, btn_to, path_to, lw_dirs, lw_files, file_info, lb_filesize
         global btn_left, btn_right, btn_flip, btn_save, check_copy, rbtn_1, rbtn_2, rbtn_3, RadioGroupBox, lb_ratio, lb_data
+        global lw_ext, lb_dirs, lb_files, lb_ext, lb_info
 
         lb_image = QLabel("Выберите файл для просмотра")
         lb_from = QLabel("Источник:")
@@ -131,8 +157,13 @@ def main():
         btn_to = QPushButton("Выбор папки")
         path_to = QLineEdit("")
         path_to.setPlaceholderText("Введите путь или нажмите выбрать")
+        lb_dirs = QLabel("Список папок")
         lw_dirs = QListWidget()
+        lb_files = QLabel("Список файлов")
         lw_files = QListWidget()
+        lb_ext = QLabel("Список типов файлов")
+        lw_ext = QListWidget()
+        lb_info = QLabel("Выбрано 0 файлов")
 
         file_info = QGroupBox("Информация о файле:")
         lb_filesize = QLabel('Размер файла:')
@@ -161,8 +192,17 @@ def main():
         row1.addWidget(btn_from)
 
         row2 = QHBoxLayout()
-        row2.addWidget(lw_dirs, 50)
-        row2.addWidget(lw_files, 50)
+        col4 = QVBoxLayout()
+        col4.addWidget(lb_dirs)
+        col4.addWidget(lw_dirs, 50)
+        col4.addWidget(lb_ext)
+        col4.addWidget(lw_ext, 50)
+        row2.addLayout(col4, 20)
+        col5 = QVBoxLayout()
+        col5.addWidget(lb_files)
+        col5.addWidget(lw_files, 80)
+        col5.addWidget(lb_info)
+        row2.addLayout(col5, 20)
         col1 = QVBoxLayout()
         row5 = QHBoxLayout()
         col3 = QVBoxLayout()
@@ -181,7 +221,7 @@ def main():
         col_box_info.addWidget(lb_data, alignment=(Qt.AlignLeft))
         file_info.setLayout(col_box_info)
         col1.addWidget(file_info)
-        row2.addLayout(col1, 150)
+        row2.addLayout(col1, 70)
 
         row3 = QHBoxLayout()
         row3.addWidget(lb_to)
