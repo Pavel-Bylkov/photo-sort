@@ -7,13 +7,14 @@ import shutil
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QApplication, QWidget, QLabel, QPushButton, QLineEdit, QGroupBox, QCheckBox,
-                            QRadioButton, QListWidget, QHBoxLayout, QVBoxLayout, QFileDialog)
-from PyQt5.QtGui import QPixmap # оптимизированная для показа на экране картинка
+                             QRadioButton, QListWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QMessageBox)
+from PyQt5.QtGui import QPixmap, QPalette, QColor  # оптимизированная для показа на экране картинка
 
 from PIL import Image
 
+main_win = None
 
-class ImagesProcessor:
+class FileProcessor:
     def __init__(self):
         self.image = None
         self.workdir = ""
@@ -30,55 +31,80 @@ class ImagesProcessor:
 
     def filter(self):
         lw_files.clear()
-        self.filenames = []
-        self.extensions = [] # заменить на выделенные
+        self.filenames = {}
+        self.extensions = []  # заменить на выделенные
         for root, dirs, files in os.walk(self.workdir):
             for file in files:
                 ext = os.path.splitext(file.lower())[1]
                 if ext in self.extensions:
-                    self.filenames.append(file.lower())
-                    lw_files.addItem(file.lower())
+                    self.filenames[file] = root
+        lw_files.addItems(sorted(self.filenames.keys()))
+        self.numfiles = len(self.filenames)
+        lb_info.setText(f"Выбрано {self.numfiles} файлов")
+
+    def set_folder_from(self):
+        path_from.setText(self.workdir)
+        self.extensions = []
+        self.filenames = {}
+        self.dirs = []
+        for root, dirs, files in os.walk(self.workdir):
+            for file in files:
+                ext = os.path.splitext(file.lower())[1]
+                if ext:
+                    self.filenames[file] = root
+                    if ext not in self.extensions:
+                        self.extensions.append(ext)
+            if root == self.workdir:
+                self.dirs = dirs
+        lw_dirs.clear()
+        lw_dirs.addItem("..")
+        lw_dirs.addItems(sorted(self.dirs))
+        lw_files.clear()
+        lw_files.addItems(sorted(self.filenames.keys()))
+        lw_ext.clear()
+        lw_ext.addItems(sorted(self.extensions))
         self.numfiles = len(self.filenames)
         lb_info.setText(f"Выбрано {self.numfiles} файлов")
 
     def open_folder_from(self):
         if self.choose_workdir():
-            self.extensions = []
-            self.filenames = []
-            self.dirs = []
-            for root, dirs, files in os.walk(self.workdir):
-                self.filenames += files
-                self.dirs += dirs
-            for i in range(len(self.filenames)):
-                self.filenames[i] = self.filenames[i].lower()
-                ext = os.path.splitext(self.filenames[i])[1]
-                if ext not in self.extensions:
-                    self.extensions.append(ext)
-            lw_dirs.clear()
-            for dir in self.dirs:
-                lw_dirs.addItem(dir)
-            lw_files.clear()
-            for filename in self.filenames:
-                lw_files.addItem(filename)
-            lw_ext.clear()
-            for ext in self.extensions:
-                lw_ext.addItem(ext)
-            self.numfiles = len(self.filenames)
-            lb_info.setText(f"Выбрано {self.numfiles} файлов")
+            self.set_folder_from()
+        else:
+            QMessageBox.warning(main_win, "Уведомление", "Указан неверный путь! Введите полный путь к папке.")
 
-    def load_image(self, cur_dir, filename):
-        self.dir = cur_dir
-        self.filename = filename
-        self.image_path = cur_dir + os.sep + filename  # os.path.join(dir, filename)  #
-        self.image = Image.open(self.image_path)
+    def open_folder_from2(self):
+        if path_from.text():
+            if os.path.exists(path_from.text()):
+                self.workdir = path_from.text()
+                self.set_folder_from()
+            else:
+                QMessageBox.warning(main_win, "Уведомление", "Указан неверный путь! Введите полный путь к папке.")
+
+    def change_folder_from(self):
+        if lw_dirs.selectedItems():
+            key = lw_dirs.selectedItems()[0].text()
+            if key == "..":
+                self.workdir = self.workdir[:self.workdir.rfind(os.sep)]
+            else:
+                self.workdir = self.workdir + os.sep + key
+            self.set_folder_from()
+
+    def load_image(self):
+        if self.filename in self.filenames:
+            self.img_dir = self.filenames[self.filename]
+            self.image_path = os.path.join(self.img_dir, self.filename)  #
+            self.image = Image.open(self.image_path)
+        else:
+            self.image_path = ""
 
     def show_image(self):
-        lb_image.hide()
-        pixmapimage = QPixmap(self.image_path)
-        w, h = lb_image.width(), lb_image.height()
-        pixmapimage = pixmapimage.scaled(w, h, Qt.KeepAspectRatio)
-        lb_image.setPixmap(pixmapimage)
-        lb_image.show()
+        if self.image_path:
+            lb_image.hide()
+            pixmapimage = QPixmap(self.image_path)
+            w, h = lb_image.width(), lb_image.height()
+            pixmapimage = pixmapimage.scaled(w, h, Qt.KeepAspectRatio)
+            lb_image.setPixmap(pixmapimage)
+            lb_image.show()
 
     def save_image(self):
         ''' сохраняет копию файла в подпапке '''
@@ -90,6 +116,14 @@ class ImagesProcessor:
 
     def get_date_taken(self):
         return self.image._getexif()[36867]  # дату лучше брать из Exif.Image.DateTime
+
+    def show_chosen_image(self):
+        if lw_files.selectedItems():
+            self.filename = lw_files.selectedItems()[0].text()
+            ext = os.path.splitext(self.filename.lower())[1]
+            if ext != "" and ext in self.img_ext:
+                self.load_image()
+                self.show_image()
 
 
 def create_month_folders():
@@ -103,9 +137,11 @@ def create_month_folders():
             if not os.path.exists(f'0{x}'):
                 os.makedirs(f'0{x}')
 
+
 def mod_date(file):
     t = os.path.getmtime(file)
     return datetime.datetime.fromtimestamp(t)
+
 
 def create_folders(path_from, path_to):
     """пройдясь по папке, функция соберет все расширения файлов, а заодно,
@@ -115,7 +151,7 @@ def create_folders(path_from, path_to):
     a = []  # ['AAE', 'MOV', 'JPG', 'PNG']
     for root, dirs, files in os.walk(path_from):
         for file in files:
-            if os.path.splitext(file)[1].lower() not in a:   # проверить нужен ли метод
+            if os.path.splitext(file)[1].lower() not in a:  # проверить нужен ли метод
                 a.append(os.path.splitext(file)[1].lower())
             if os.path.splitext(file)[1] in a:
                 year = str(mod_date(file))[:10][:4]
@@ -138,10 +174,12 @@ def move_files(path, a):
                     month = str(mod_date(file))[:10][5:7]  # месяц создания фото
                     shutil.move(file, f'{year}{os.sep}{month}{os.sep}{file}')  # перенос файла в папку
     except EnvironmentError:
-        ('Вроде готово') # программа завершается с ошибкой, в цикле не найдя последнего файла
+        ('Вроде готово')  # программа завершается с ошибкой, в цикле не найдя последнего файла
 
 
 def main():
+    global main_win
+
     def create_widgets():
         """Создаем виджеты для приложения"""
         global lb_image, lb_from, btn_from, path_from, lb_to, btn_to, path_to, lw_dirs, lw_files, file_info, lb_filesize
@@ -159,7 +197,7 @@ def main():
         path_to.setPlaceholderText("Введите путь или нажмите выбрать")
         lb_dirs = QLabel("Список папок")
         lw_dirs = QListWidget()
-        lb_files = QLabel("Список файлов")
+        lb_files = QLabel("Список файлов(+подпапки)")
         lw_files = QListWidget()
         lb_ext = QLabel("Список типов файлов")
         lw_ext = QListWidget()
@@ -181,7 +219,6 @@ def main():
         rbtn_1 = QRadioButton('Вместе с фото')
         rbtn_2 = QRadioButton('Вместе, но в отдельных папках')
         rbtn_3 = QRadioButton('Отсортировать отдельно')
-
 
     def layout_widgets():
         """ Привязка виджетов к линиям и главному окну"""
@@ -241,8 +278,32 @@ def main():
         main_col.addWidget(RadioGroupBox)
         main_win.setLayout(main_col)
 
-
     app = QApplication([])
+
+    def set_fusion_style():
+        app.setStyle("Fusion")
+
+        dark_palette = QPalette()
+
+        dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.WindowText, Qt.white)
+        dark_palette.setColor(QPalette.Base, QColor(25, 25, 25))
+        dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
+        dark_palette.setColor(QPalette.ToolTipText, Qt.white)
+        dark_palette.setColor(QPalette.Text, Qt.white)
+        dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.ButtonText, Qt.white)
+        dark_palette.setColor(QPalette.BrightText, Qt.red)
+        dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
+        dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+        dark_palette.setColor(QPalette.HighlightedText, Qt.black)
+
+        app.setPalette(dark_palette)
+
+        app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }")
+
+    set_fusion_style()
     main_win = QWidget()
     main_win.resize(1600, 900)
     main_win.setWindowTitle('Smart Foto Folder Switcher')
@@ -250,17 +311,17 @@ def main():
     create_widgets()
     layout_widgets()
 
-    workimages = ImagesProcessor()
+    workimages = FileProcessor()
+
+    path_from.editingFinished.connect(workimages.open_folder_from2)
 
     btn_from.clicked.connect(workimages.open_folder_from)
 
-    def show_chosen_image():
-        if lw_files.selectedItems():
-            name = lw_files.selectedItems()[0].text()
-            workimages.load_image(name)
-            workimages.show_image()
+    lw_files.itemClicked.connect(workimages.show_chosen_image)
 
-    lw_files.itemClicked.connect(show_chosen_image)
+
+
+    lw_dirs.doubleClicked.connect(workimages.change_folder_from)
 
     main_win.show()
     app.exec_()
