@@ -8,7 +8,7 @@ import shutil
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QApplication, QWidget, QLabel, QPushButton, QLineEdit, QGroupBox, QCheckBox,
                              QRadioButton, QListWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QMessageBox)
-from PyQt5.QtGui import QPixmap, QPalette, QColor  # оптимизированная для показа на экране картинка
+from PyQt5.QtGui import QPixmap, QPalette, QColor
 
 from PIL import Image
 
@@ -307,7 +307,7 @@ def main():
     set_fusion_style()
     main_win = QWidget()
     main_win.resize(1600, 900)
-    main_win.setWindowTitle('Smart Foto Folder Switcher')
+    main_win.setWindowTitle('Smart FotoSwitcher')
 
     create_widgets()
     layout_widgets()
