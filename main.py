@@ -14,6 +14,7 @@ from PIL import Image
 
 main_win = None
 
+
 class FileProcessor:
     def __init__(self):
         self.image = None
@@ -318,8 +319,6 @@ def main():
     btn_from.clicked.connect(workimages.open_folder_from)
 
     lw_files.itemClicked.connect(workimages.show_chosen_image)
-
-
 
     lw_dirs.doubleClicked.connect(workimages.change_folder_from)
 
