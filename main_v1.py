@@ -307,7 +307,7 @@ def main():
     set_fusion_style()
     main_win = QWidget()
     main_win.resize(1600, 900)
-    main_win.setWindowTitle('Smart FotoSwitcher')
+    main_win.setWindowTitle('Smart PhotoSwitcher')
 
     create_widgets()
     layout_widgets()

@@ -2,11 +2,23 @@
 
 import os
 import datetime
-import shutil
+# import shutil
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QApplication, QWidget, QLabel, QPushButton, QLineEdit, QGroupBox, QCheckBox,
-                             QRadioButton, QListWidget, QHBoxLayout, QVBoxLayout, QFileDialog, QMessageBox)
+from PyQt5.QtWidgets import (
+    QApplication,
+    QWidget,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QGroupBox,
+    QCheckBox,
+    QRadioButton,
+    QListWidget,
+    QHBoxLayout,
+    QVBoxLayout,
+    QFileDialog,
+    QMessageBox)
 from PyQt5.QtGui import QPixmap, QPalette, QColor
 
 from PIL import Image
@@ -57,7 +69,6 @@ class MainWindow(QWidget):
         """Главное окно программы"""
         super().__init__(parent=parent, flags=flags)
 
-        self.image = None
         self.workdir = ""
         self.filename = ""
         self.save_dir = ""
@@ -73,9 +84,6 @@ class MainWindow(QWidget):
         # устанавливает, как будет выглядеть окно (надпись, размер)
         self.set_appear()
 
-        # старт:
-        self.show()
-
     def initUI(self):
         """Создаем виджеты для приложения"""
         self.lb_image = QLabel("Выберите файл для просмотра")
@@ -89,7 +97,7 @@ class MainWindow(QWidget):
         self.path_to.setPlaceholderText("Введите путь или нажмите выбрать")
         self.lb_dirs = QLabel("Список папок")
         self.lw_dirs = QListWidget()
-        self.lb_files = QLabel("Список файлов(+подпапки)")
+        self.lb_files = QLabel("Список файлов (+ подпапки)")
         self.lw_files = QListWidget()
         self.lb_ext = QLabel("Список типов файлов")
         self.lw_ext = QListWidget()
@@ -105,7 +113,8 @@ class MainWindow(QWidget):
         self.btn_flip = QPushButton("Зеркало")
         self.btn_save = QPushButton("Применить")
 
-        self.check_copy = QCheckBox('Сортировать в исходной папке (без копирования)')
+        self.check_copy = QCheckBox(
+            'Сортировать в исходной папке (без копирования)')
 
         self.RadioGroupBox = QGroupBox("Обработка видео файлов:")
         self.rbtn_1 = QRadioButton('Вместе с фото')
@@ -138,7 +147,7 @@ class MainWindow(QWidget):
         col1 = QVBoxLayout()
         row5 = QHBoxLayout()
         col3 = QVBoxLayout()
-        col3.addWidget(self.lb_image, 150, alignment=(Qt.AlignCenter))
+        col3.addWidget(self.lb_image, 90)  # alignment=Qt.AlignCenter
         row5.addLayout(col3, 100)
         row6 = QHBoxLayout()
         row6.addWidget(self.btn_left)
@@ -148,9 +157,9 @@ class MainWindow(QWidget):
         col1.addLayout(row6)
         col1.addLayout(row5)
         col_box_info = QVBoxLayout()
-        col_box_info.addWidget(self.lb_filesize, alignment=(Qt.AlignLeft))
-        col_box_info.addWidget(self.lb_ratio, alignment=(Qt.AlignLeft))
-        col_box_info.addWidget(self.lb_data, alignment=(Qt.AlignLeft))
+        col_box_info.addWidget(self.lb_filesize, alignment=Qt.AlignLeft)
+        col_box_info.addWidget(self.lb_ratio, alignment=Qt.AlignLeft)
+        col_box_info.addWidget(self.lb_data, alignment=Qt.AlignLeft)
         self.file_info.setLayout(col_box_info)
         col1.addWidget(self.file_info)
         row2.addLayout(col1, 70)
@@ -160,17 +169,22 @@ class MainWindow(QWidget):
         row3.addWidget(self.path_to)
         row3.addWidget(self.btn_to)
 
+        row7 = QHBoxLayout()
         row4 = QHBoxLayout()
         row4.addWidget(self.rbtn_1)
         row4.addWidget(self.rbtn_2)
         row4.addWidget(self.rbtn_3)
         self.RadioGroupBox.setLayout(row4)
+        row7.addWidget(self.RadioGroupBox, 80)
+        col6 = QVBoxLayout()
+        col6.addWidget(self.btn_run, alignment=Qt.AlignBottom)
+        row7.addLayout(col6, 20)
 
         main_col.addLayout(row1)
         main_col.addLayout(row2)
         main_col.addWidget(self.check_copy)
         main_col.addLayout(row3)
-        main_col.addWidget(self.RadioGroupBox)
+        main_col.addLayout(row7)
 
         self.setLayout(main_col)
 
@@ -241,7 +255,10 @@ class MainWindow(QWidget):
         if self.choose_workdir():
             self.set_folder_from()
         else:
-            QMessageBox.warning(self, "Уведомление", "Указан неверный путь! Введите полный путь к папке.")
+            QMessageBox.warning(
+                self,
+                "Уведомление",
+                "Указан неверный путь! Введите полный путь к папке.")
 
     def open_folder_from2(self):
         if self.path_from.text():
@@ -249,7 +266,10 @@ class MainWindow(QWidget):
                 self.workdir = self.path_from.text()
                 self.set_folder_from()
             else:
-                QMessageBox.warning(self, "Уведомление", "Указан неверный путь! Введите полный путь к папке.")
+                QMessageBox.warning(
+                    self,
+                    "Уведомление",
+                    "Указан неверный путь! Введите полный путь к папке.")
 
     def change_folder_from(self):
         if self.lw_dirs.selectedItems():
@@ -265,17 +285,24 @@ class MainWindow(QWidget):
             self.img_dir = self.filenames[self.filename]
             self.image_path = os.path.join(self.img_dir, self.filename)  #
             self.image = Image.open(self.image_path)
-        else:
-            self.image_path = ""
+            file_stats = os.stat(self.image_path)
+            self.lb_filesize.setText(
+                f'Размер файла:           '
+                f'{round(file_stats.st_size / (1024 * 1024), 3)} MBytes')
+            self.lb_ratio.setText(
+                f'Разрешение:             '
+                f'{self.image.size[0]} x {self.image.size[1]}')
+            self.lb_data.setText(
+                f"Дата и время изменения: {self.get_imagedate()}")
+            self.show_image()
 
     def show_image(self):
-        if self.image_path:
-            self.lb_image.hide()
-            pixmapimage = QPixmap(self.image_path)
-            w, h = self.lb_image.width(), self.lb_image.height()
-            pixmapimage = pixmapimage.scaled(w, h, Qt.KeepAspectRatio)
-            self.lb_image.setPixmap(pixmapimage)
-            self.lb_image.show()
+        self.lb_image.hide()
+        pixmapimage = QPixmap(self.image_path)
+        w, h = self.lb_image.width(), self.lb_image.height()
+        pixmapimage = pixmapimage.scaled(w, h, Qt.KeepAspectRatio)
+        self.lb_image.setPixmap(pixmapimage)
+        self.lb_image.show()
 
     def save_image(self):
         """сохраняет копию файла в подпапке"""
@@ -285,8 +312,34 @@ class MainWindow(QWidget):
         image_path = os.path.join(path, self.filename)
         self.image.save(image_path)
 
-    def get_date_taken(self):
-        return self.image._getexif()[36867]  # дату лучше брать из Exif.Image.DateTime
+    def get_imagedate(self):
+        """Returns the date and time from image(if available) from
+            Orthallelous original source
+            https://orthallelous.wordpress.com/2015/04/19/extracting-\
+            date-and-time-from-images-with-python/"""
+        dat = None
+        # for subsecond prec, see doi.org/10.3189/2013JoG12J126 , sect. 2.2,
+        # 2.3
+        tags = [(36867, 37521),  # (DateTimeOriginal, SubsecTimeOriginal)
+                                 # when img taken
+                (36868, 37522),  # (DateTimeDigitized, SubsecTimeDigitized)
+                                 # when img stored digitally
+                (306, 37520), ]  # (DateTime, SubsecTime)#when file was changed
+        exif = self.image._getexif()
+        if exif:
+            for t in tags:
+                dat = exif.get(t[0])
+                # sub = exif.get(t[1], 0)
+                # PIL.PILLOW_VERSION >= 3.0 returns a tuple
+                dat = dat[0] if type(dat) == tuple else dat
+                # sub = sub[0] if type(sub) == tuple else sub
+                if dat is not None:
+                    break
+            if dat is None:
+                return None
+            return '{}'.format(dat)
+        t = os.path.getmtime(self.image_path)
+        return str(datetime.datetime.fromtimestamp(t))[:16]
 
     def show_chosen_image(self):
         if self.lw_files.selectedItems():
@@ -294,7 +347,6 @@ class MainWindow(QWidget):
             ext = os.path.splitext(self.filename.lower())[1]
             if ext != "" and ext in self.img_ext:
                 self.load_image()
-                self.show_image()
 
 
 class QApp(QApplication):
@@ -322,12 +374,15 @@ class QApp(QApplication):
 
         self.setPalette(dark_palette)
 
-        self.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }")
+        self.setStyleSheet("QToolTip { color: #ffffff; "
+                           "background-color: #2a82da; "
+                           "border: 1px solid white; }")
 
 
 def main():
     app = QApp([])
     mw = MainWindow()
+    mw.show()
     app.exec_()
 
 
