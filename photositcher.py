@@ -6,35 +6,27 @@ import datetime
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QApplication,
-    QWidget,
-    QLabel,
-    QPushButton,
-    QLineEdit,
-    QGroupBox,
-    QCheckBox,
-    QRadioButton,
-    QListWidget,
-    QHBoxLayout,
-    QVBoxLayout,
-    QFileDialog,
+    QApplication, QWidget, QLabel,
+    QPushButton, QLineEdit, QGroupBox,
+    QCheckBox, QRadioButton, QListWidget,
+    QHBoxLayout, QVBoxLayout, QFileDialog,
     QMessageBox)
 from PyQt5.QtGui import QPixmap, QPalette, QColor
 
 from PIL import Image
 
-win_width, win_height = 1600, 900
-win_title = 'Smart PhotoSwitcher'
+from config import *
 
 
 class ProgressBarr(QWidget):
+
     def __init__(self, prog_title, parent=None, flags=Qt.WindowFlags()):
         """Окно для визуализации прогресса"""
         super().__init__(parent=parent, flags=flags)
         self.prog_title = prog_title
 
         # создаём и настраиваем графические элементы:
-        self.initUI()
+        self.init_ui()
 
         # устанавливает связи между элементами
         self.connects()
@@ -45,7 +37,7 @@ class ProgressBarr(QWidget):
         # старт:
         self.show()
 
-    def initUI(self):
+    def init_ui(self):
         """Создаем виджеты"""
         pass
         self.lay_widgets()
@@ -74,9 +66,10 @@ class MainWindow(QWidget):
         self.save_dir = ""
         self.img_ext = ['.jpg', '.jpeg', '.png', '.gif', '.bmp']
         self.numfiles = 0
+        self.widgets = []
 
         # создаём и настраиваем графические элементы:
-        self.initUI()
+        self.init_ui()
 
         # устанавливает связи между элементами
         self.connects()
@@ -84,53 +77,85 @@ class MainWindow(QWidget):
         # устанавливает, как будет выглядеть окно (надпись, размер)
         self.set_appear()
 
-    def initUI(self):
+    def init_ui(self):
         """Создаем виджеты для приложения"""
-        self.lb_image = QLabel("Выберите файл для просмотра")
-        self.lb_from = QLabel("Источник:")
-        self.btn_from = QPushButton("Выбор папки")
+        self.lb_ru = QLabel("RU")
+        self.lb_en = QLabel("EN")
+        self.lang_switch = QCheckBox()
+        self.lang_switch.setStyleSheet('''
+            QCheckBox::indicator:unchecked {
+                image: url(sw_left.png);
+            }
+            QCheckBox::indicator:checked {
+                image: url(sw_right.png);
+            }''')
+        self.lb_image = QLabel(lang1["lb_image"]["ru"])
+        self.widgets.append(self.lb_image)
+        self.lb_from = QLabel(lang1["lb_from"]["ru"])
+        self.widgets.append(self.lb_from)
+        self.btn_from = QPushButton(lang1["btn_folder"]["ru"])
+        self.widgets.append(self.btn_from)
         self.path_from = QLineEdit("")
-        self.path_from.setPlaceholderText("Введите путь или нажмите выбрать")
-        self.lb_to = QLabel("Результат:")
-        self.btn_to = QPushButton("Выбор папки")
+        self.path_from.setPlaceholderText(lang2["path_holder"]["ru"])
+        self.lb_to = QLabel(lang1["lb_to"]["ru"])
+        self.widgets.append(self.lb_to)
+        self.btn_to = QPushButton(lang1["btn_folder"]["ru"])
+        self.widgets.append(self.btn_to)
         self.path_to = QLineEdit("")
-        self.path_to.setPlaceholderText("Введите путь или нажмите выбрать")
-        self.lb_dirs = QLabel("Список папок")
+        self.path_to.setPlaceholderText(lang2["path_holder"]["ru"])
+        self.lb_dirs = QLabel(lang1["lb_dirs"]["ru"])
+        self.widgets.append(self.lb_dirs)
         self.lw_dirs = QListWidget()
-        self.lb_files = QLabel("Список файлов (+ подпапки)")
+        self.lb_files = QLabel(lang1["lb_files"]["ru"])
+        self.widgets.append(self.lb_files)
         self.lw_files = QListWidget()
-        self.lb_ext = QLabel("Список типов файлов")
+        self.lb_ext = QLabel(lang1["lb_ext"]["ru"])
+        self.widgets.append(self.lb_ext)
         self.lw_ext = QListWidget()
-        self.lb_info = QLabel("Выбрано 0 файлов")
-
-        self.file_info = QGroupBox("Информация о файле:")
-        self.lb_filesize = QLabel('Размер файла:')
-        self.lb_ratio = QLabel('Разрешение:')
-        self.lb_data = QLabel("Дата и время изменения:")
-
-        self.btn_left = QPushButton("Лево")
-        self.btn_right = QPushButton("Право")
-        self.btn_flip = QPushButton("Зеркало")
-        self.btn_save = QPushButton("Применить")
-
-        self.check_copy = QCheckBox(
-            'Сортировать в исходной папке (без копирования)')
-
-        self.RadioGroupBox = QGroupBox("Обработка видео файлов:")
-        self.rbtn_1 = QRadioButton('Вместе с фото')
-        self.rbtn_2 = QRadioButton('Вместе, но в отдельных папках')
-        self.rbtn_3 = QRadioButton('Отсортировать отдельно')
-
-        self.btn_run = QPushButton("Выполнить")
+        self.lb_info = QLabel(lang2["lb_info"]["ru"].format(0))
+        self.file_info = QGroupBox(lang1["file_info"]["ru"])
+        self.widgets.append(self.file_info)
+        self.lb_filesize = QLabel(lang1["lb_filesize"]["ru"])
+        self.widgets.append(self.lb_filesize)
+        self.lb_ratio = QLabel(lang1["lb_ratio"]["ru"])
+        self.widgets.append(self.lb_ratio)
+        self.lb_data = QLabel(lang1["lb_data"]["ru"])
+        self.widgets.append(self.lb_data)
+        self.btn_left = QPushButton(lang1["btn_left"]["ru"])
+        self.widgets.append(self.btn_left)
+        self.btn_right = QPushButton(lang1["btn_right"]["ru"])
+        self.widgets.append(self.btn_right)
+        self.btn_flip = QPushButton(lang1["btn_flip"]["ru"])
+        self.widgets.append(self.btn_flip)
+        self.btn_save = QPushButton(lang1["btn_save"]["ru"])
+        self.widgets.append(self.btn_save)
+        self.check_copy = QCheckBox(lang1["check_copy"]["ru"])
+        self.widgets.append(self.check_copy)
+        self.RadioGroupBox = QGroupBox(lang1["RadioGroupBox"]["ru"])
+        self.widgets.append(self.RadioGroupBox)
+        self.rbtn_1 = QRadioButton(lang1["rbtn_1"]["ru"])
+        self.widgets.append(self.rbtn_1)
+        self.rbtn_2 = QRadioButton(lang1["rbtn_2"]["ru"])
+        self.widgets.append(self.rbtn_2)
+        self.rbtn_3 = QRadioButton(lang1["rbtn_3"]["ru"])
+        self.widgets.append(self.rbtn_3)
+        self.btn_run = QPushButton(lang1["btn_run"]["ru"])
+        self.widgets.append(self.btn_run)
         self.lay_widgets()
 
     def lay_widgets(self):
         """ Привязка виджетов к линиям и главному окну"""
         main_col = QVBoxLayout()  # Основная вертикальная линия
+        row0 = QHBoxLayout()
+        row0.addStretch(92)
+        row0.addWidget(self.lb_ru, 2, alignment=Qt.AlignCenter)
+        row0.addWidget(self.lang_switch, 4, alignment=Qt.AlignCenter)
+        row0.addWidget(self.lb_en, 2, alignment=Qt.AlignLeft)
+
         row1 = QHBoxLayout()
-        row1.addWidget(self.lb_from)
-        row1.addWidget(self.path_from)
-        row1.addWidget(self.btn_from)
+        row1.addWidget(self.lb_from, 15, alignment=Qt.AlignCenter)
+        row1.addWidget(self.path_from, 70)
+        row1.addWidget(self.btn_from, 15)
 
         row2 = QHBoxLayout()
         col4 = QVBoxLayout()
@@ -165,9 +190,9 @@ class MainWindow(QWidget):
         row2.addLayout(col1, 70)
 
         row3 = QHBoxLayout()
-        row3.addWidget(self.lb_to)
-        row3.addWidget(self.path_to)
-        row3.addWidget(self.btn_to)
+        row3.addWidget(self.lb_to, 15, alignment=Qt.AlignCenter)
+        row3.addWidget(self.path_to, 70)
+        row3.addWidget(self.btn_to, 15)
 
         row7 = QHBoxLayout()
         row4 = QHBoxLayout()
@@ -180,6 +205,7 @@ class MainWindow(QWidget):
         col6.addWidget(self.btn_run, alignment=Qt.AlignBottom)
         row7.addLayout(col6, 20)
 
+        main_col.addLayout(row0)
         main_col.addLayout(row1)
         main_col.addLayout(row2)
         main_col.addWidget(self.check_copy)
@@ -377,6 +403,9 @@ class QApp(QApplication):
         self.setStyleSheet("QToolTip { color: #ffffff; "
                            "background-color: #2a82da; "
                            "border: 1px solid white; }")
+        font = self.font()
+        font.setPointSize(14)
+        QApplication.instance().setFont(font)
 
 
 def main():
