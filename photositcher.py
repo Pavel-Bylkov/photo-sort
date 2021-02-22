@@ -14,8 +14,22 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QPixmap, QPalette, QColor
 
 from PIL import Image
+from hashlib import md5
+from uuid import uuid4
 
 from config import *
+
+
+def is_duplicate_md5(file1, file2):
+    with open(file1, "rb") as test1:
+        m = md5()
+        m.update(test1.read())
+        original_md5 = m.hexdigest()
+    with open(file2, "rb") as test2:
+        m = md5()
+        m.update(test2.read())
+        duplicate_md5 = m.hexdigest()
+    return original_md5 == duplicate_md5
 
 
 class ProgressBarr(QWidget):
@@ -64,9 +78,8 @@ class MainWindow(QWidget):
         self.workdir = ""
         self.filename = ""
         self.save_dir = ""
-        self.img_ext = ['.jpg', '.jpeg', '.png', '.gif', '.bmp']
         self.numfiles = 0
-        self.widgets = []
+        self.widgets = {}
 
         # создаём и настраиваем графические элементы:
         self.init_ui()
@@ -79,8 +92,8 @@ class MainWindow(QWidget):
 
     def init_ui(self):
         """Создаем виджеты для приложения"""
-        self.lb_ru = QLabel("RU")
-        self.lb_en = QLabel("EN")
+        self.lb_ru = QLabel("RUS")
+        self.lb_en = QLabel("ENG")
         self.lang_switch = QCheckBox()
         self.lang_switch.setStyleSheet('''
             QCheckBox::indicator:unchecked {
@@ -89,58 +102,56 @@ class MainWindow(QWidget):
             QCheckBox::indicator:checked {
                 image: url(sw_right.png);
             }''')
-        self.lb_image = QLabel(lang1["lb_image"]["ru"])
-        self.widgets.append(self.lb_image)
-        self.lb_from = QLabel(lang1["lb_from"]["ru"])
-        self.widgets.append(self.lb_from)
-        self.btn_from = QPushButton(lang1["btn_folder"]["ru"])
-        self.widgets.append(self.btn_from)
+        self.lb_image = QLabel(lang1["lb_image"][cur_lang])
+        self.widgets["lb_image"] = self.lb_image
+        self.lb_from = QLabel(lang1["lb_from"][cur_lang])
+        self.widgets["lb_from"] = self.lb_from
+        self.btn_from = QPushButton(lang1["btn_from"][cur_lang])
+        self.widgets["btn_from"] = self.btn_from
         self.path_from = QLineEdit("")
-        self.path_from.setPlaceholderText(lang2["path_holder"]["ru"])
-        self.lb_to = QLabel(lang1["lb_to"]["ru"])
-        self.widgets.append(self.lb_to)
-        self.btn_to = QPushButton(lang1["btn_folder"]["ru"])
-        self.widgets.append(self.btn_to)
+        self.path_from.setPlaceholderText(lang2["path_holder"][cur_lang])
+        self.lb_to = QLabel(lang1["lb_to"][cur_lang])
+        self.widgets["lb_to"] = self.lb_to
+        self.btn_to = QPushButton(lang1["btn_to"][cur_lang])
+        self.widgets["btn_to"] = self.btn_to
         self.path_to = QLineEdit("")
-        self.path_to.setPlaceholderText(lang2["path_holder"]["ru"])
-        self.lb_dirs = QLabel(lang1["lb_dirs"]["ru"])
-        self.widgets.append(self.lb_dirs)
+        self.path_to.setPlaceholderText(lang2["path_holder"][cur_lang])
+        self.lb_dirs = QLabel(lang1["lb_dirs"][cur_lang])
+        self.widgets["lb_dirs"] = self.lb_dirs
         self.lw_dirs = QListWidget()
-        self.lb_files = QLabel(lang1["lb_files"]["ru"])
-        self.widgets.append(self.lb_files)
+        self.lb_files = QLabel(lang1["lb_files"][cur_lang])
+        self.widgets["lb_files"] = self.lb_files
         self.lw_files = QListWidget()
-        self.lb_ext = QLabel(lang1["lb_ext"]["ru"])
-        self.widgets.append(self.lb_ext)
+        self.lb_ext = QLabel(lang1["lb_ext"][cur_lang])
+        self.widgets["lb_ext"] = self.lb_ext
         self.lw_ext = QListWidget()
-        self.lb_info = QLabel(lang2["lb_info"]["ru"].format(0))
-        self.file_info = QGroupBox(lang1["file_info"]["ru"])
-        self.widgets.append(self.file_info)
-        self.lb_filesize = QLabel(lang1["lb_filesize"]["ru"])
-        self.widgets.append(self.lb_filesize)
-        self.lb_ratio = QLabel(lang1["lb_ratio"]["ru"])
-        self.widgets.append(self.lb_ratio)
-        self.lb_data = QLabel(lang1["lb_data"]["ru"])
-        self.widgets.append(self.lb_data)
-        self.btn_left = QPushButton(lang1["btn_left"]["ru"])
-        self.widgets.append(self.btn_left)
-        self.btn_right = QPushButton(lang1["btn_right"]["ru"])
-        self.widgets.append(self.btn_right)
-        self.btn_flip = QPushButton(lang1["btn_flip"]["ru"])
-        self.widgets.append(self.btn_flip)
-        self.btn_save = QPushButton(lang1["btn_save"]["ru"])
-        self.widgets.append(self.btn_save)
-        self.check_copy = QCheckBox(lang1["check_copy"]["ru"])
-        self.widgets.append(self.check_copy)
-        self.RadioGroupBox = QGroupBox(lang1["RadioGroupBox"]["ru"])
-        self.widgets.append(self.RadioGroupBox)
-        self.rbtn_1 = QRadioButton(lang1["rbtn_1"]["ru"])
-        self.widgets.append(self.rbtn_1)
-        self.rbtn_2 = QRadioButton(lang1["rbtn_2"]["ru"])
-        self.widgets.append(self.rbtn_2)
-        self.rbtn_3 = QRadioButton(lang1["rbtn_3"]["ru"])
-        self.widgets.append(self.rbtn_3)
-        self.btn_run = QPushButton(lang1["btn_run"]["ru"])
-        self.widgets.append(self.btn_run)
+        self.lb_info = QLabel(lang2["lb_info"][cur_lang].format(0))
+        self.file_info = QGroupBox(lang2["file_info"][cur_lang])
+        self.lb_filesize = QLabel(lang1["lb_filesize"][cur_lang])
+        self.widgets["lb_filesize"] = self.lb_filesize
+        self.lb_ratio = QLabel(lang1["lb_ratio"][cur_lang])
+        self.widgets["lb_ratio"] = self.lb_ratio
+        self.lb_data = QLabel(lang1["lb_data"][cur_lang])
+        self.widgets["lb_data"] = self.lb_data
+        self.btn_left = QPushButton(lang1["btn_left"][cur_lang])
+        self.widgets["btn_left"] = self.btn_left
+        self.btn_right = QPushButton(lang1["btn_right"][cur_lang])
+        self.widgets["btn_right"] = self.btn_right
+        self.btn_flip = QPushButton(lang1["btn_flip"][cur_lang])
+        self.widgets["btn_flip"] = self.btn_flip
+        self.btn_save = QPushButton(lang1["btn_save"][cur_lang])
+        self.widgets["btn_save"] = self.btn_save
+        self.check_copy = QCheckBox(lang1["check_copy"][cur_lang])
+        self.widgets["check_copy"] = self.check_copy
+        self.RadioGroupBox = QGroupBox(lang2["RadioGroupBox"][cur_lang])
+        self.rbtn_1 = QRadioButton(lang1["rbtn_1"][cur_lang])
+        self.widgets["rbtn_1"] = self.rbtn_1
+        self.rbtn_2 = QRadioButton(lang1["rbtn_2"][cur_lang])
+        self.widgets["rbtn_2"] = self.rbtn_2
+        self.rbtn_3 = QRadioButton(lang1["rbtn_3"][cur_lang])
+        self.widgets["rbtn_3"] = self.rbtn_3
+        self.btn_run = QPushButton(lang1["btn_run"][cur_lang])
+        self.widgets["btn_run"] = self.btn_run
         self.lay_widgets()
 
     def lay_widgets(self):
@@ -216,9 +227,9 @@ class MainWindow(QWidget):
 
     def run_click(self):
         if self.action == "copy":
-            self.progress = ProgressBarr("Копирование файлов")
+            self.progress = ProgressBarr(lang2["copy"][cur_lang])
         else:
-            self.progress = ProgressBarr("Перемещение файлов")
+            self.progress = ProgressBarr(lang2["move"][cur_lang])
         self.progress.exec()
         # self.hide()
 
@@ -228,11 +239,23 @@ class MainWindow(QWidget):
         self.btn_from.clicked.connect(self.open_folder_from)
         self.lw_files.itemClicked.connect(self.show_chosen_image)
         self.lw_dirs.doubleClicked.connect(self.change_folder_from)
+        self.lang_switch.clicked.connect(self.lang_click)
 
     def set_appear(self):
         """устанавливает, как будет выглядеть окно (надпись, размер)"""
         self.setWindowTitle(win_title)
         self.resize(win_width, win_height)
+
+    def lang_click(self):
+        global cur_lang
+        cur_lang = 'ru' if cur_lang == 'en' else 'en'
+        for key in lang1:
+            self.widgets[key].setText(lang1[key][cur_lang])
+        self.path_from.setPlaceholderText(lang2["path_holder"][cur_lang])
+        self.path_to.setPlaceholderText(lang2["path_holder"][cur_lang])
+        self.lb_info.setText(lang2["lb_info"][cur_lang].format(self.numfiles))
+        self.RadioGroupBox.setTitle(lang2["RadioGroupBox"][cur_lang])
+        self.file_info.setTitle(lang2["file_info"][cur_lang])
 
     def choose_workdir(self):
         self.workdir = QFileDialog.getExistingDirectory()
@@ -251,7 +274,23 @@ class MainWindow(QWidget):
                     self.filenames[file] = root
         self.lw_files.addItems(sorted(self.filenames.keys()))
         self.numfiles = len(self.filenames)
-        self.lb_info.setText(f"Выбрано {self.numfiles} файлов")
+        self.lb_info.setText(lang1["lb_info"][cur_lang].format(self.numfiles))
+
+    def add_file_in_filenames(self, root, file):
+        ext = os.path.splitext(file.lower())[1]
+        if ext and ext not in ignor_ext:
+            if file not in self.filenames:
+                self.filenames[file] = root
+            elif not is_duplicate_md5(
+                    os.path.join(self.filenames[file], file),
+                    os.path.join(root, file)):
+                unic_key = str(uuid4().hex)[:6]
+                new_name = os.path.splitext(file)[0] + unic_key + ext
+                os.rename(os.path.join(root, file),
+                          os.path.join(root, new_name))
+                self.filenames[new_name] = root
+            if ext not in self.extensions:
+                self.extensions.append(ext)
 
     def set_folder_from(self):
         self.path_from.setText(self.workdir)
@@ -260,11 +299,7 @@ class MainWindow(QWidget):
         self.dirs = []
         for root, dirs, files in os.walk(self.workdir):
             for file in files:
-                ext = os.path.splitext(file.lower())[1]
-                if ext:
-                    self.filenames[file] = root
-                    if ext not in self.extensions:
-                        self.extensions.append(ext)
+                self.add_file_in_filenames(root, file)
             if root == self.workdir:
                 self.dirs = dirs
         self.lw_dirs.clear()
@@ -275,16 +310,14 @@ class MainWindow(QWidget):
         self.lw_ext.clear()
         self.lw_ext.addItems(sorted(self.extensions))
         self.numfiles = len(self.filenames)
-        self.lb_info.setText(f"Выбрано {self.numfiles} файлов")
+        self.lb_info.setText(lang2["lb_info"][cur_lang].format(self.numfiles))
 
     def open_folder_from(self):
         if self.choose_workdir():
             self.set_folder_from()
         else:
             QMessageBox.warning(
-                self,
-                "Уведомление",
-                "Указан неверный путь! Введите полный путь к папке.")
+                self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
 
     def open_folder_from2(self):
         if self.path_from.text():
@@ -293,9 +326,7 @@ class MainWindow(QWidget):
                 self.set_folder_from()
             else:
                 QMessageBox.warning(
-                    self,
-                    "Уведомление",
-                    "Указан неверный путь! Введите полный путь к папке.")
+                    self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
 
     def change_folder_from(self):
         if self.lw_dirs.selectedItems():
@@ -309,17 +340,17 @@ class MainWindow(QWidget):
     def load_image(self):
         if self.filename in self.filenames:
             self.img_dir = self.filenames[self.filename]
-            self.image_path = os.path.join(self.img_dir, self.filename)  #
+            self.image_path = os.path.join(self.img_dir, self.filename)
             self.image = Image.open(self.image_path)
             file_stats = os.stat(self.image_path)
             self.lb_filesize.setText(
-                f'Размер файла:           '
+                f'{lang1["lb_filesize"][cur_lang]}'
                 f'{round(file_stats.st_size / (1024 * 1024), 3)} MBytes')
             self.lb_ratio.setText(
-                f'Разрешение:             '
+                f'{lang1["lb_ratio"][cur_lang]}'
                 f'{self.image.size[0]} x {self.image.size[1]}')
             self.lb_data.setText(
-                f"Дата и время изменения: {self.get_imagedate()}")
+                f'{lang1["lb_data"][cur_lang]} {self.get_imagedate()}')
             self.show_image()
 
     def show_image(self):
@@ -362,8 +393,10 @@ class MainWindow(QWidget):
                 if dat is not None:
                     break
             if dat is None:
-                return None
-            return '{}'.format(dat)
+                t = os.path.getmtime(self.image_path)
+                return str(datetime.datetime.fromtimestamp(t))[:16]
+            if str(dat)[:4] != '0000':
+                return '{}'.format(dat)
         t = os.path.getmtime(self.image_path)
         return str(datetime.datetime.fromtimestamp(t))[:16]
 
@@ -371,8 +404,17 @@ class MainWindow(QWidget):
         if self.lw_files.selectedItems():
             self.filename = self.lw_files.selectedItems()[0].text()
             ext = os.path.splitext(self.filename.lower())[1]
-            if ext != "" and ext in self.img_ext:
+            if ext != "" and ext in img_ext:
                 self.load_image()
+            else:
+                self.lb_image.clear()
+                self.lb_image.setText(lang1["lb_image"][cur_lang])
+                file_stats = os.stat(self.image_path)
+                self.lb_filesize.setText(
+                    f'{lang1["lb_filesize"][cur_lang]}'
+                    f'{round(file_stats.st_size / (1024 * 1024), 3)} MBytes')
+                self.lb_ratio.setText(lang1["lb_ratio"][cur_lang])
+                self.lb_data.setText(lang1["lb_data"][cur_lang])
 
 
 class QApp(QApplication):
