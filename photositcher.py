@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import datetime
 # import shutil
 
 from PyQt5.QtCore import Qt
@@ -10,34 +9,138 @@ from PyQt5.QtWidgets import (
     QPushButton, QLineEdit, QGroupBox,
     QCheckBox, QRadioButton, QListWidget,
     QHBoxLayout, QVBoxLayout, QFileDialog,
-    QMessageBox)
+    QMessageBox, QAbstractItemView)
 from PyQt5.QtGui import QPixmap, QPalette, QColor
 
 from PIL import Image
 from hashlib import md5
 from uuid import uuid4
+from datetime import datetime as dt
 
 from config import *
 
+log = f"Start session {dt.strftime(dt.now(), '%A, %d %B %Y %I:%M%p')}"
 
-def is_duplicate_md5(file1, file2):
-    with open(file1, "rb") as test1:
-        m = md5()
-        m.update(test1.read())
-        original_md5 = m.hexdigest()
-    with open(file2, "rb") as test2:
-        m = md5()
-        m.update(test2.read())
-        duplicate_md5 = m.hexdigest()
-    return original_md5 == duplicate_md5
 
+class File:
+    def __init__(self, path, filename):
+        """Получить объект с набором необходимых характеристик файла"""
+        self.name = filename
+        self.path = path
+        self.dir = path.split(os.sep)[-1]
+        self.abs_path = os.path.join(path, filename)
+        self.ext = os.path.splitext(filename.lower())[1]
+        self.is_image = self.ext in img_ext
+        self.is_video = self.ext in video_ext
+        self.date = self.get_date()
+
+    def __eq__(self, other):
+        if self.name.lower() != other.name.lower():
+            return False
+        with open(self.abs_path, "rb") as test1:
+            m = md5()
+            m.update(test1.read())
+            original_md5 = m.hexdigest()
+        with open(other.abs_path, "rb") as test2:
+            m = md5()
+            m.update(test2.read())
+            duplicate_md5 = m.hexdigest()
+        return original_md5 == duplicate_md5
+
+    def rename(self):
+        unic_key = str(uuid4().hex)[:6]
+        new_name = os.path.splitext(self.name)[0] + unic_key + self.ext
+        os.rename(self.abs_path, os.path.join(self.path, new_name))
+        self.abs_path = os.path.join(self.path, new_name)
+        self.name = new_name
+        return new_name
+
+    def __lt__(self, other):
+        return self.name < other.name
+
+    def __gt__(self, other):
+        return self.name > other.name
+
+    def open_image(self):
+        global log
+        file_stats = os.stat(self.abs_path)
+        self.size = file_stats.st_size / (1024 * 1024)
+        if self.is_image:
+            try:
+                with Image.open(self.abs_path) as image:
+                    self.img_size = f'{image.size[0]} x {image.size[1]}'
+                return True
+            except:
+                log += "\n Ошибка при просмотре изображения" + self.abs_path
+        return False
+
+    def get_date(self):
+        """Returns the date and time from image(if available) from
+            Orthallelous original source
+            https://orthallelous.wordpress.com/2015/04/19/extracting-\
+            date-and-time-from-images-with-python/"""
+        global log
+        if self.is_image:
+            dat = None
+            # for subsecond prec, see doi.org/10.3189/2013JoG12J126 , sect. 2.2,
+            # 2.3
+            tags = [
+                (36867, 37521),  # (DateTimeOriginal, SubsecTimeOriginal)
+                # when img taken
+                (36868, 37522),  # (DateTimeDigitized, SubsecTimeDigitized)
+                # when img stored digitally
+                (306, 37520), ]  # (DateTime, SubsecTime)#when file was changed
+            try:
+                with Image.open(self.abs_path) as image:
+                    exif = image._getexif()
+                    if exif:
+                        for t in tags:
+                            dat = exif.get(t[0])
+                            # sub = exif.get(t[1], 0)
+                            # PIL.PILLOW_VERSION >= 3.0 returns a tuple
+                            dat = dat[0] if type(dat) == tuple else dat
+                            # sub = sub[0] if type(sub) == tuple else sub
+                            if dat is not None:
+                                break
+                        if dat is None:
+                            t = os.path.getmtime(self.abs_path)
+                            return str(dt.fromtimestamp(t))[:16]
+                        if str(dat)[:4] != '0000':
+                            return str(dat)
+            except:
+                log += "\n Ошибка при получении даты изображения" + self.abs_path
+        t = os.path.getmtime(self.abs_path)
+        return str(dt.fromtimestamp(t))[:16]
+
+    def __repr__(self):
+        return self.name
+
+    def __str__(self):
+        return self.name
+
+    def do_flip(self):
+        with Image.open(self.abs_path) as image:
+            new_image = image.transpose(Image.FLIP_LEFT_RIGHT)
+            new_image.save(self.abs_path)
+
+    def do_left(self):
+        with Image.open(self.abs_path) as image:
+            new_image = image.transpose(Image.ROTATE_90)
+            new_image.save(self.abs_path)
+
+    def do_right(self):
+        with Image.open(self.abs_path) as image:
+            new_image = image.transpose(Image.ROTATE_270)
+            new_image.save(self.abs_path)
+
+    def move(self, new_path):
+        pass
 
 class ProgressBarr(QWidget):
 
-    def __init__(self, prog_title, parent=None, flags=Qt.WindowFlags()):
+    def __init__(self, title, selected_files, new_path, parent=None, flags=Qt.WindowFlags()):
         """Окно для визуализации прогресса"""
         super().__init__(parent=parent, flags=flags)
-        self.prog_title = prog_title
 
         # создаём и настраиваем графические элементы:
         self.init_ui()
@@ -46,7 +149,7 @@ class ProgressBarr(QWidget):
         self.connects()
 
         # устанавливает, как будет выглядеть окно (надпись, размер)
-        self.set_appear()
+        self.set_appear(title)
 
         # старт:
         self.show()
@@ -64,10 +167,13 @@ class ProgressBarr(QWidget):
     def connects(self):
         pass
 
-    def set_appear(self):
+    def set_appear(self, title):
         """устанавливает, как будет выглядеть окно (надпись, размер)"""
-        self.setWindowTitle(self.prog_title)
+        self.setWindowTitle(title)
         self.resize(700, 300)
+
+    def process(self):
+        pass
 
 
 class MainWindow(QWidget):
@@ -77,9 +183,9 @@ class MainWindow(QWidget):
 
         self.workdir = ""
         self.filename = ""
-        self.save_dir = ""
-        self.numfiles = 0
         self.widgets = {}
+        self.files = {}
+        self.selected_files = {}
 
         # создаём и настраиваем графические элементы:
         self.init_ui()
@@ -125,6 +231,8 @@ class MainWindow(QWidget):
         self.lb_ext = QLabel(lang1["lb_ext"][cur_lang])
         self.widgets["lb_ext"] = self.lb_ext
         self.lw_ext = QListWidget()
+        # setting selection mode property
+        self.lw_ext.setSelectionMode(QAbstractItemView.MultiSelection)
         self.lb_info = QLabel(lang2["lb_info"][cur_lang].format(0))
         self.file_info = QGroupBox(lang2["file_info"][cur_lang])
         self.lb_filesize = QLabel(lang1["lb_filesize"][cur_lang])
@@ -139,8 +247,6 @@ class MainWindow(QWidget):
         self.widgets["btn_right"] = self.btn_right
         self.btn_flip = QPushButton(lang1["btn_flip"][cur_lang])
         self.widgets["btn_flip"] = self.btn_flip
-        self.btn_save = QPushButton(lang1["btn_save"][cur_lang])
-        self.widgets["btn_save"] = self.btn_save
         self.check_copy = QCheckBox(lang1["check_copy"][cur_lang])
         self.widgets["check_copy"] = self.check_copy
         self.RadioGroupBox = QGroupBox(lang2["RadioGroupBox"][cur_lang])
@@ -186,10 +292,11 @@ class MainWindow(QWidget):
         col3.addWidget(self.lb_image, 90)  # alignment=Qt.AlignCenter
         row5.addLayout(col3, 100)
         row6 = QHBoxLayout()
+        row6.addStretch(20)
         row6.addWidget(self.btn_left)
         row6.addWidget(self.btn_right)
         row6.addWidget(self.btn_flip)
-        row6.addWidget(self.btn_save)
+        row6.addStretch(20)
         col1.addLayout(row6)
         col1.addLayout(row5)
         col_box_info = QVBoxLayout()
@@ -226,10 +333,8 @@ class MainWindow(QWidget):
         self.setLayout(main_col)
 
     def run_click(self):
-        if self.action == "copy":
-            self.progress = ProgressBarr(lang2["copy"][cur_lang])
-        else:
-            self.progress = ProgressBarr(lang2["move"][cur_lang])
+        title = lang2["copy"][cur_lang] if self.action == "copy" else lang2["move"][cur_lang]
+        self.progress = ProgressBarr(title, self.selected_files, self.new_dir)
         self.progress.exec()
         # self.hide()
 
@@ -237,7 +342,11 @@ class MainWindow(QWidget):
         self.btn_run.clicked.connect(self.run_click)
         self.path_from.editingFinished.connect(self.open_folder_from2)
         self.btn_from.clicked.connect(self.open_folder_from)
+        self.btn_flip.clicked.connect(self.do_flip)
+        self.btn_left.clicked.connect(self.do_left)
+        self.btn_right.clicked.connect(self.do_right)
         self.lw_files.itemClicked.connect(self.show_chosen_image)
+        self.lw_ext.itemClicked.connect(self.filter)
         self.lw_dirs.doubleClicked.connect(self.change_folder_from)
         self.lang_switch.clicked.connect(self.lang_click)
 
@@ -263,54 +372,48 @@ class MainWindow(QWidget):
             return False
         return True
 
-    def filter(self):
+    def update_lw_files(self):
         self.lw_files.clear()
-        self.filenames = {}
-        self.extensions = []  # заменить на выделенные
-        for root, dirs, files in os.walk(self.workdir):
-            for file in files:
-                ext = os.path.splitext(file.lower())[1]
-                if ext in self.extensions:
-                    self.filenames[file] = root
-        self.lw_files.addItems(sorted(self.filenames.keys()))
-        self.numfiles = len(self.filenames)
-        self.lb_info.setText(lang1["lb_info"][cur_lang].format(self.numfiles))
+        self.lw_files.addItems(self.selected_files)
+        self.lw_files.sortItems()
+        self.lb_info.setText(
+            lang2["lb_info"][cur_lang].format(len(self.selected_files)))
 
-    def add_file_in_filenames(self, root, file):
-        ext = os.path.splitext(file.lower())[1]
-        if ext and ext not in ignor_ext:
-            if file not in self.filenames:
-                self.filenames[file] = root
-            elif not is_duplicate_md5(
-                    os.path.join(self.filenames[file], file),
-                    os.path.join(root, file)):
-                unic_key = str(uuid4().hex)[:6]
-                new_name = os.path.splitext(file)[0] + unic_key + ext
-                os.rename(os.path.join(root, file),
-                          os.path.join(root, new_name))
-                self.filenames[new_name] = root
-            if ext not in self.extensions:
-                self.extensions.append(ext)
+    def filter(self):
+        if self.lw_ext.selectedItems():
+            self.selected_ext = [item.text() for item in self.lw_ext.selectedItems()]
+            self.selected_files = {
+                filename: self.files[filename] for filename in self.files
+                if self.files[filename].ext in self.selected_ext}
+            self.update_lw_files()
+
+    def add_in_files(self, root, filename):
+        f = File(root, filename)
+        if f.ext and f.ext not in ignor_ext:
+            if filename not in self.files:
+                self.files[filename] = f
+            elif not self.files[filename] == f:
+                new_name = f.rename()
+                self.files[new_name] = f
+            if f.ext not in self.extensions:
+                self.extensions.append(f.ext)
 
     def set_folder_from(self):
+        self.lw_dirs.clear()
+        self.lw_ext.clear()
+        self.lw_files.clear()
         self.path_from.setText(self.workdir)
         self.extensions = []
-        self.filenames = {}
+        self.files = {}
         self.dirs = []
         for root, dirs, files in os.walk(self.workdir):
             for file in files:
-                self.add_file_in_filenames(root, file)
+                self.add_in_files(root, file)
             if root == self.workdir:
-                self.dirs = dirs
-        self.lw_dirs.clear()
+                self.dirs = dirs[:]
         self.lw_dirs.addItem("..")
         self.lw_dirs.addItems(sorted(self.dirs))
-        self.lw_files.clear()
-        self.lw_files.addItems(sorted(self.filenames.keys()))
-        self.lw_ext.clear()
         self.lw_ext.addItems(sorted(self.extensions))
-        self.numfiles = len(self.filenames)
-        self.lb_info.setText(lang2["lb_info"][cur_lang].format(self.numfiles))
 
     def open_folder_from(self):
         if self.choose_workdir():
@@ -328,6 +431,22 @@ class MainWindow(QWidget):
                 QMessageBox.warning(
                     self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
 
+    def choose_folder_to(self):
+        self.new_dir = QFileDialog.getExistingDirectory()
+        if self.new_dir is None or self.new_dir == "":
+            self.path_to.setText(self.new_dir)
+        else:
+            QMessageBox.warning(
+                self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
+
+    def choose_folder_to2(self):
+        if self.path_to.text():
+            if os.path.exists(self.path_to.text()):
+                self.new_dir = self.path_to.text()
+            else:
+                QMessageBox.warning(
+                    self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
+
     def change_folder_from(self):
         if self.lw_dirs.selectedItems():
             key = self.lw_dirs.selectedItems()[0].text()
@@ -338,84 +457,48 @@ class MainWindow(QWidget):
             self.set_folder_from()
 
     def load_image(self):
-        if self.filename in self.filenames:
-            self.img_dir = self.filenames[self.filename]
-            self.image_path = os.path.join(self.img_dir, self.filename)
-            self.image = Image.open(self.image_path)
-            file_stats = os.stat(self.image_path)
-            self.lb_filesize.setText(
-                f'{lang1["lb_filesize"][cur_lang]}'
-                f'{round(file_stats.st_size / (1024 * 1024), 3)} MBytes')
-            self.lb_ratio.setText(
-                f'{lang1["lb_ratio"][cur_lang]}'
-                f'{self.image.size[0]} x {self.image.size[1]}')
-            self.lb_data.setText(
-                f'{lang1["lb_data"][cur_lang]} {self.get_imagedate()}')
-            self.show_image()
+        file = self.selected_files[self.filename]
+        if file.open_image():
+            self.lb_ratio.setText(f'{lang1["lb_ratio"][cur_lang]}{file.img_size}')
+            self.show_image(file.abs_path)
+        else:
+            self.lb_image.clear()
+            self.lb_image.setText(lang1["lb_image"][cur_lang])
+            self.lb_ratio.setText(lang1["lb_ratio"][cur_lang])
+        self.lb_filesize.setText(
+            f'{lang1["lb_filesize"][cur_lang]}{round(file.size, 3)} MBytes')
+        self.lb_data.setText(f'{lang1["lb_data"][cur_lang]} {file.date}')
 
-    def show_image(self):
+    def show_image(self, path):
         self.lb_image.hide()
-        pixmapimage = QPixmap(self.image_path)
+        pixmapimage = QPixmap(path)
         w, h = self.lb_image.width(), self.lb_image.height()
         pixmapimage = pixmapimage.scaled(w, h, Qt.KeepAspectRatio)
         self.lb_image.setPixmap(pixmapimage)
         self.lb_image.show()
 
-    def save_image(self):
-        """сохраняет копию файла в подпапке"""
-        path = os.path.join(self.dir, self.save_dir)
-        if not (os.path.exists(path) or os.path.isdir(path)):
-            os.mkdir(path)
-        image_path = os.path.join(path, self.filename)
-        self.image.save(image_path)
-
-    def get_imagedate(self):
-        """Returns the date and time from image(if available) from
-            Orthallelous original source
-            https://orthallelous.wordpress.com/2015/04/19/extracting-\
-            date-and-time-from-images-with-python/"""
-        dat = None
-        # for subsecond prec, see doi.org/10.3189/2013JoG12J126 , sect. 2.2,
-        # 2.3
-        tags = [(36867, 37521),  # (DateTimeOriginal, SubsecTimeOriginal)
-                                 # when img taken
-                (36868, 37522),  # (DateTimeDigitized, SubsecTimeDigitized)
-                                 # when img stored digitally
-                (306, 37520), ]  # (DateTime, SubsecTime)#when file was changed
-        exif = self.image._getexif()
-        if exif:
-            for t in tags:
-                dat = exif.get(t[0])
-                # sub = exif.get(t[1], 0)
-                # PIL.PILLOW_VERSION >= 3.0 returns a tuple
-                dat = dat[0] if type(dat) == tuple else dat
-                # sub = sub[0] if type(sub) == tuple else sub
-                if dat is not None:
-                    break
-            if dat is None:
-                t = os.path.getmtime(self.image_path)
-                return str(datetime.datetime.fromtimestamp(t))[:16]
-            if str(dat)[:4] != '0000':
-                return '{}'.format(dat)
-        t = os.path.getmtime(self.image_path)
-        return str(datetime.datetime.fromtimestamp(t))[:16]
-
     def show_chosen_image(self):
         if self.lw_files.selectedItems():
             self.filename = self.lw_files.selectedItems()[0].text()
-            ext = os.path.splitext(self.filename.lower())[1]
-            if ext != "" and ext in img_ext:
-                self.load_image()
-            else:
-                self.lb_image.clear()
-                self.lb_image.setText(lang1["lb_image"][cur_lang])
-                file_stats = os.stat(self.image_path)
-                self.lb_filesize.setText(
-                    f'{lang1["lb_filesize"][cur_lang]}'
-                    f'{round(file_stats.st_size / (1024 * 1024), 3)} MBytes')
-                self.lb_ratio.setText(lang1["lb_ratio"][cur_lang])
-                self.lb_data.setText(lang1["lb_data"][cur_lang])
+            self.load_image()
 
+    def do_flip(self):
+        if self.filename:
+            file = self.selected_files[self.filename]
+            file.do_flip()
+            self.load_image()
+
+    def do_left(self):
+        if self.filename:
+            file = self.selected_files[self.filename]
+            file.do_left()
+            self.load_image()
+
+    def do_right(self):
+        if self.filename:
+            file = self.selected_files[self.filename]
+            file.do_right()
+            self.load_image()
 
 class QApp(QApplication):
     def __init__(self, list_str):

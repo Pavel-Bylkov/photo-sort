@@ -1,6 +1,12 @@
 win_width, win_height = 1600, 900
 win_title = 'Smart PhotoSwitcher'
-img_ext = ['.jpg', '.jpeg', '.png', '.gif', '.bmp']
+img_ext = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']
+video_ext = [
+    '.3g2', '.3gp', '.3gp2', '.3gpp', '.3gpp2', '.asf', '.asx', '.avi',
+    '.bin', '.dat', '.drv', '.f4v', '.flv', '.gtp', '.h264', '.m4v', '.mkv',
+    '.mod', '.moov', '.mov', '.mp4', '.mpeg', '.mpg', '.mts', '.rm', '.rmvb',
+    '.spl', '.srt', '.stl', '.swf', '.ts', '.vcd', '.vid', '.vid', '.vid',
+    '.vob', '.webm', '.wm', '.wmv', '.yuv']
 ignor_ext = [".db"]
 cur_lang = "ru"
 lang1 = {
@@ -45,9 +51,6 @@ lang1 = {
         "en": ""},
     "btn_flip": {
         "ru": "Зеркало",
-        "en": ""},
-    "btn_save": {
-        "ru": "Применить",
         "en": ""},
     "check_copy": {
         "ru": 'Сортировать в исходной папке (без копирования)',
