@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# ToDo Добавить обработку нажатия Кнопок убрать из списка и Удалить
+# ToDo Добавить Обработку выбора опций с видео файлами и передачу их в Прогресс
 
 import os
 # import shutil
@@ -136,11 +138,16 @@ class File:
     def move(self, new_path):
         pass
 
-class ProgressBarr(QWidget):
+class Progress(QWidget):
 
-    def __init__(self, title, selected_files, new_path, parent=None, flags=Qt.WindowFlags()):
+    def __init__(self, title, selected_files, new_path, action,
+                 parent=None, flags=Qt.WindowFlags()):
         """Окно для визуализации прогресса"""
         super().__init__(parent=parent, flags=flags)
+
+        self.selected_files = selected_files
+        self.new_path = new_path
+        self.action = action
 
         # создаём и настраиваем графические элементы:
         self.init_ui()
@@ -156,7 +163,6 @@ class ProgressBarr(QWidget):
 
     def init_ui(self):
         """Создаем виджеты"""
-        pass
         self.lay_widgets()
 
     def lay_widgets(self):
@@ -182,6 +188,7 @@ class MainWindow(QWidget):
         super().__init__(parent=parent, flags=flags)
 
         self.workdir = ""
+        self.new_dir = ""
         self.filename = ""
         self.widgets = {}
         self.files = {}
@@ -208,6 +215,8 @@ class MainWindow(QWidget):
             QCheckBox::indicator:checked {
                 image: url(sw_right.png);
             }''')
+        self.lb_main = QLabel(lang1["lb_main"][cur_lang])
+        self.widgets["lb_main"] = self.lb_main
         self.lb_image = QLabel(lang1["lb_image"][cur_lang])
         self.widgets["lb_image"] = self.lb_image
         self.lb_from = QLabel(lang1["lb_from"][cur_lang])
@@ -247,10 +256,21 @@ class MainWindow(QWidget):
         self.widgets["btn_right"] = self.btn_right
         self.btn_flip = QPushButton(lang1["btn_flip"][cur_lang])
         self.widgets["btn_flip"] = self.btn_flip
-        self.check_copy = QCheckBox(lang1["check_copy"][cur_lang])
-        self.widgets["check_copy"] = self.check_copy
-        self.RadioGroupBox = QGroupBox(lang2["RadioGroupBox"][cur_lang])
+        self.btn_disable = QPushButton(lang1["btn_disable"][cur_lang])
+        self.widgets["btn_disable"] = self.btn_disable
+        self.btn_del = QPushButton(lang1["btn_del"][cur_lang])
+        self.widgets["btn_del"] = self.btn_del
+        self.gb_mode = QGroupBox(lang2["gb_mode"][cur_lang])
+        self.rbtn_move = QRadioButton(lang1["rbtn_move"][cur_lang])
+        self.rbtn_move.setChecked(True)
+        self.widgets["rbtn_move"] = self.rbtn_move
+        self.rbtn_move_to = QRadioButton(lang1["rbtn_move_to"][cur_lang])
+        self.widgets["rbtn_move_to"] = self.rbtn_move_to
+        self.rbtn_copy_to = QRadioButton(lang1["rbtn_copy_to"][cur_lang])
+        self.widgets["rbtn_copy_to"] = self.rbtn_copy_to
+        self.gb_video = QGroupBox(lang2["gb_video"][cur_lang])
         self.rbtn_1 = QRadioButton(lang1["rbtn_1"][cur_lang])
+        self.rbtn_1.setChecked(True)
         self.widgets["rbtn_1"] = self.rbtn_1
         self.rbtn_2 = QRadioButton(lang1["rbtn_2"][cur_lang])
         self.widgets["rbtn_2"] = self.rbtn_2
@@ -264,7 +284,8 @@ class MainWindow(QWidget):
         """ Привязка виджетов к линиям и главному окну"""
         main_col = QVBoxLayout()  # Основная вертикальная линия
         row0 = QHBoxLayout()
-        row0.addStretch(92)
+        row0.addWidget(self.lb_main, 90, alignment=Qt.AlignCenter)
+        row0.addStretch(2)
         row0.addWidget(self.lb_ru, 2, alignment=Qt.AlignCenter)
         row0.addWidget(self.lang_switch, 4, alignment=Qt.AlignCenter)
         row0.addWidget(self.lb_en, 2, alignment=Qt.AlignLeft)
@@ -296,7 +317,11 @@ class MainWindow(QWidget):
         row6.addWidget(self.btn_left)
         row6.addWidget(self.btn_right)
         row6.addWidget(self.btn_flip)
-        row6.addStretch(20)
+        row6.addStretch(5)
+        row6.addWidget(self.btn_disable)
+        row6.addStretch(2)
+        row6.addWidget(self.btn_del)
+        row6.addStretch(2)
         col1.addLayout(row6)
         col1.addLayout(row5)
         col_box_info = QVBoxLayout()
@@ -317,26 +342,36 @@ class MainWindow(QWidget):
         row4.addWidget(self.rbtn_1)
         row4.addWidget(self.rbtn_2)
         row4.addWidget(self.rbtn_3)
-        self.RadioGroupBox.setLayout(row4)
-        row7.addWidget(self.RadioGroupBox, 80)
+        self.gb_video.setLayout(row4)
+        row7.addWidget(self.gb_video, 80)
         col6 = QVBoxLayout()
         col6.addWidget(self.btn_run, alignment=Qt.AlignBottom)
         row7.addLayout(col6, 20)
 
+        row8 = QHBoxLayout()
+        row8.addWidget(self.rbtn_move_to)
+        row8.addWidget(self.rbtn_copy_to)
+        row8.addWidget(self.rbtn_move)
+        self.gb_mode.setLayout(row8)
+
         main_col.addLayout(row0)
         main_col.addLayout(row1)
         main_col.addLayout(row2)
-        main_col.addWidget(self.check_copy)
+        main_col.addWidget(self.gb_mode)
         main_col.addLayout(row3)
         main_col.addLayout(row7)
 
         self.setLayout(main_col)
 
     def run_click(self):
-        title = lang2["copy"][cur_lang] if self.action == "copy" else lang2["move"][cur_lang]
-        self.progress = ProgressBarr(title, self.selected_files, self.new_dir)
-        self.progress.exec()
-        # self.hide()
+        action = "copy" if self.rbtn_copy_to.isChecked() else "move"
+        if self.new_dir:
+            title = lang2["copy"][cur_lang] if action == "copy" else lang2["move"][cur_lang]
+            self.progress = Progress(title, self.selected_files, self.new_dir, action)
+            self.progress.exec()
+        else:
+            QMessageBox.warning(
+                self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
 
     def connects(self):
         self.btn_run.clicked.connect(self.run_click)
@@ -349,6 +384,9 @@ class MainWindow(QWidget):
         self.lw_ext.itemClicked.connect(self.filter)
         self.lw_dirs.doubleClicked.connect(self.change_folder_from)
         self.lang_switch.clicked.connect(self.lang_click)
+        self.rbtn_move.toggled.connect(self.set_folder_to)
+        self.path_to.editingFinished.connect(self.choose_folder_to2)
+        self.btn_to.clicked.connect(self.choose_folder_to)
 
     def set_appear(self):
         """устанавливает, как будет выглядеть окно (надпись, размер)"""
@@ -363,7 +401,7 @@ class MainWindow(QWidget):
         self.path_from.setPlaceholderText(lang2["path_holder"][cur_lang])
         self.path_to.setPlaceholderText(lang2["path_holder"][cur_lang])
         self.lb_info.setText(lang2["lb_info"][cur_lang].format(self.numfiles))
-        self.RadioGroupBox.setTitle(lang2["RadioGroupBox"][cur_lang])
+        self.gb_video.setTitle(lang2["gb_video"][cur_lang])
         self.file_info.setTitle(lang2["file_info"][cur_lang])
 
     def choose_workdir(self):
@@ -418,6 +456,7 @@ class MainWindow(QWidget):
     def open_folder_from(self):
         if self.choose_workdir():
             self.set_folder_from()
+            self.set_folder_to()
         else:
             QMessageBox.warning(
                 self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
@@ -427,14 +466,16 @@ class MainWindow(QWidget):
             if os.path.exists(self.path_from.text()):
                 self.workdir = self.path_from.text()
                 self.set_folder_from()
+                self.set_folder_to()
             else:
                 QMessageBox.warning(
                     self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
 
     def choose_folder_to(self):
         self.new_dir = QFileDialog.getExistingDirectory()
-        if self.new_dir is None or self.new_dir == "":
+        if self.new_dir is not None and self.new_dir != "":
             self.path_to.setText(self.new_dir)
+            self.rbtn_move_to.setChecked(True)
         else:
             QMessageBox.warning(
                 self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
@@ -443,9 +484,15 @@ class MainWindow(QWidget):
         if self.path_to.text():
             if os.path.exists(self.path_to.text()):
                 self.new_dir = self.path_to.text()
+                self.rbtn_move_to.setChecked(True)
             else:
                 QMessageBox.warning(
                     self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
+
+    def set_folder_to(self):
+        if self.rbtn_move.isChecked():
+            self.path_to.setText(self.workdir)
+            self.new_dir = self.path_to.text()
 
     def change_folder_from(self):
         if self.lw_dirs.selectedItems():
