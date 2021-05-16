@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 # ToDo Добавить обработку нажатия Кнопок убрать из списка и Удалить
 # ToDo Добавить Обработку выбора опций с видео файлами и передачу их в Прогресс
+# ToDo Метод copy в class File
 
 import os
-# import shutil
+import shutil
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QLabel,
+    QApplication, QWidget, QLabel, QProgressBar,
     QPushButton, QLineEdit, QGroupBox,
     QCheckBox, QRadioButton, QListWidget,
     QHBoxLayout, QVBoxLayout, QFileDialog,
@@ -135,7 +136,17 @@ class File:
             new_image = image.transpose(Image.ROTATE_270)
             new_image.save(self.abs_path)
 
+    def mkdir(self, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+
     def move(self, new_path):
+        year = self.date[:4]
+        month = self.date[5:7]
+        self.mkdir(f'{new_path}{os.sep}{year}{os.sep}{month}')
+        shutil.move(self.abs_path, f'{new_path}{os.sep}{year}{os.sep}{month}{os.sep}{self.name}')
+
+    def copy(self, new_path):
         pass
 
 class Progress(QWidget):
@@ -146,8 +157,13 @@ class Progress(QWidget):
         super().__init__(parent=parent, flags=flags)
 
         self.selected_files = selected_files
+        self.filenames = list(selected_files.keys())
         self.new_path = new_path
         self.action = action
+        self.pause = False
+        self.step = 0
+        self.max_step = len(self.selected_files)
+        self.run = True
 
         # создаём и настраиваем графические элементы:
         self.init_ui()
@@ -160,26 +176,73 @@ class Progress(QWidget):
 
         # старт:
         self.show()
+        self.process()
 
     def init_ui(self):
         """Создаем виджеты"""
+        self.lb_pbar = QLabel("Прогресс сортировки:")
+        self.pbar = QProgressBar(self)
+        self.pbar.setRange(0, self.max_step - 1)
+        self.pbar.setValue(0)
+        self.btn_pause = QPushButton('Пауза')
+        self.btn_cancel = QPushButton('Отмена')
         self.lay_widgets()
 
     def lay_widgets(self):
         """ Привязка виджетов к линиям и окну"""
         main_col = QVBoxLayout()  # Основная вертикальная линия
+        main_col.addWidget(self.lb_pbar)
+        main_col.addWidget(self.pbar)
+        row = QHBoxLayout()
+        row.addWidget(self.btn_pause)
+        row.addWidget(self.btn_cancel)
+        main_col.addLayout(row)
         self.setLayout(main_col)
 
     def connects(self):
-        pass
+        self.btn_pause.clicked.connect(self.do_pause)
+        self.btn_cancel.clicked.connect(self.stop)
+
 
     def set_appear(self, title):
         """устанавливает, как будет выглядеть окно (надпись, размер)"""
         self.setWindowTitle(title)
         self.resize(700, 300)
 
+    def stop(self):
+        self.run = False
+        self.hide()
+
+    def do_pause(self):
+        if self.pause:
+            self.pause = False
+            self.btn_pause.setText("Пауза")
+        else:
+            self.pause = True
+            self.btn_pause.setText("Продолжить")
+
+    def next_step(self):
+        if self.step == self.max_step - 1:
+            self.run = False
+            self.btn_cancel.setText('Завершить')
+            return
+
+        self.step = self.step + 1
+        self.pbar.setValue(self.step)
+
     def process(self):
-        pass
+        while self.run:
+            if not self.pause:
+                file = self.selected_files[self.filenames[self.step]]
+                self.do_action(file, self.filenames[self.step])
+                self.next_step()
+
+    def do_action(self, file, filename):
+        if self.action == "copy":
+            file.copy(self.new_path)
+        else:
+            file.move(self.new_path)
+        print(filename)
 
 
 class MainWindow(QWidget):
@@ -368,7 +431,6 @@ class MainWindow(QWidget):
         if self.new_dir:
             title = lang2["copy"][cur_lang] if action == "copy" else lang2["move"][cur_lang]
             self.progress = Progress(title, self.selected_files, self.new_dir, action)
-            self.progress.exec()
         else:
             QMessageBox.warning(
                 self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
@@ -584,6 +646,7 @@ def main():
     app = QApp([])
     mw = MainWindow()
     mw.show()
+
     app.exec_()
 
 
