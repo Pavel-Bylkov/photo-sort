@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+test_foto/
+test_pb.py
+widgets_example.py
+
+
 # C extensions
 *.so
 .idea/
