@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # ToDo Добавить обработку нажатия Кнопок убрать из списка и Удалить
+# ToDo Доработать класс Прогресс и процесс обработки файлов
 # ToDo Добавить Обработку выбора опций с видео файлами и передачу их в Прогресс
 # ToDo Метод copy в class File
 
@@ -480,6 +481,8 @@ class MainWindow(QWidget):
             lang2["lb_info"][cur_lang].format(len(self.selected_files)))
 
     def filter(self):
+        """ Функция вызывается при выборе типа файла в списке Типов файлов, меняет
+        содержимое списка Выбранных файлов и вызывает обновление списка файлов в виджете lw_files"""
         if self.lw_ext.selectedItems():
             self.selected_ext = [item.text() for item in self.lw_ext.selectedItems()]
             self.selected_files = {
