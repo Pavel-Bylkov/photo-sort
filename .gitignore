@@ -6,6 +6,7 @@ __pycache__/
 test_foto/
 test_pb.py
 widgets_example.py
+log.txt
 
 
 # C extensions
