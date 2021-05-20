@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ToDo Добавить обработку нажатия Кнопок убрать из списка и Удалить
-# ToDo Доработать класс Прогресс и процесс обработки файлов
+#! ToDo Доработать функции поворота фотографий - затирают метаданные
 # ToDo Добавить Обработку выбора опций с видео файлами и передачу их в Прогресс
 
 
@@ -101,8 +101,6 @@ class File:
             try:
                 with Image.open(self.abs_path) as image:
                     self.exif = image._getexif()
-                    self.info = image.info
-                    print(self.exif)
                     if self.exif:
                         for tag in tags:
                             dat = self.exif.get(tag[0])

@@ -1,20 +1,26 @@
 win_width, win_height = 1600, 900
-win_title = 'Smart PhotoSwitcher'
-img_ext = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']
+win_title = 'Smart PhotoSorter'
+img_ext = [
+    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.j2k', '.j2p', '.jpx',
+    '.dib', '.eps', '.psd', '.svg', '.tga', '.raw', '.ari', '.dpx', '.arw',
+    '.srf', '.sr2', '.bay', '.crw', '.cr2', '.cr3', '.dng', '.dcr', '.kdc',
+    '.erf', '.3fr', '.mef', '.mrw', '.nef', '.nrw', '.orf', '.ptx', '.pef',
+    '.raf', '.rwl', '.dng', '.rw2', '.r3d', '.srw', '.x3f']
+
 video_ext = [
     '.3g2', '.3gp', '.3gp2', '.3gpp', '.3gpp2', '.asf', '.asx', '.avi',
     '.bin', '.dat', '.drv', '.f4v', '.flv', '.gtp', '.h264', '.m4v', '.mkv',
     '.mod', '.moov', '.mov', '.mp4', '.mpeg', '.mpg', '.mts', '.rm', '.rmvb',
-    '.spl', '.srt', '.stl', '.swf', '.ts', '.vcd', '.vid', '.vid', '.vid',
+    '.spl', '.srt', '.stl', '.swf', '.ts', '.vcd', '.vid',
     '.vob', '.webm', '.wm', '.wmv', '.yuv']
 ignor_ext = [".db"]
-cur_lang = "ru"
+lang = "ru"
 lang1 = {
     "lb_main": {
-        "ru": "Программа сортировки файлов по дате (/Год/Месяц/Старая папка)",
+        "ru": "Программа сортировки фото и видео файлов по дате (/Год/Месяц/[Старая папка])",
         "en": ""},
     "lb_image": {
-        "ru": "Выберите файл для просмотра",
+        "ru": "Выберите файл для просмотра (поддерживаются не все форматы)",
         "en": ""},
     "lb_from": {
         "ru": "Источник:",
@@ -38,13 +44,13 @@ lang1 = {
         "ru": "Выберите типы файлов",
         "en": ""},
     "lb_filesize": {
-        "ru": 'Размер файла:           ',
+        "ru": 'Размер файла:',
         "en": ""},
     "lb_ratio": {
-        "ru": 'Разрешение:             ',
+        "ru": 'Разрешение:',
         "en": ""},
     "lb_data": {
-        "ru": "Дата и время изменения:",
+        "ru": "Дата и время:",
         "en": ""},
     "btn_left": {
         "ru": "Лево",
@@ -57,6 +63,9 @@ lang1 = {
         "en": ""},
     "btn_disable": {
         "ru": "Убрать из списка",
+        "en": ""},
+    "rbtn_all_files": {
+        "ru": "Все файлы, включая подпапки (рекурсивно)",
         "en": ""},
     "btn_del": {
         "ru": "Удалить с диска",
