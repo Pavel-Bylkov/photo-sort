@@ -2,7 +2,7 @@
 # ToDo Добавить обработку нажатия Кнопок убрать из списка и Удалить
 # ToDo Доработать класс Прогресс и процесс обработки файлов
 # ToDo Добавить Обработку выбора опций с видео файлами и передачу их в Прогресс
-# ToDo Метод copy в class File
+
 
 import os
 import shutil
@@ -23,7 +23,11 @@ from datetime import datetime as dt
 
 from config import *
 
-log = f"Start session {dt.strftime(dt.now(), '%A, %d %B %Y %I:%M%p')}"
+log_file = "log.txt"
+
+def log_save(msg):
+    with open(log_file, "a", encoding="utf-8") as file:
+        file.write(f"{msg}\n")
 
 
 class File:
@@ -37,9 +41,14 @@ class File:
         self.is_image = self.ext in img_ext
         self.is_video = self.ext in video_ext
         self.date = self.get_date()
+        self.year = self.date[:4]
+        self.month = self.date[5:7]
+        self.size = os.stat(self.abs_path).st_size / (1024 * 1024)
+        self.exif = None
+        self.info = None
 
     def __eq__(self, other):
-        if self.name.lower() != other.name.lower():
+        if self.name.lower() != other.name.lower() or self.size != other.size:
             return False
         with open(self.abs_path, "rb") as test1:
             m = md5()
@@ -66,16 +75,13 @@ class File:
         return self.name > other.name
 
     def open_image(self):
-        global log
-        file_stats = os.stat(self.abs_path)
-        self.size = file_stats.st_size / (1024 * 1024)
         if self.is_image:
             try:
                 with Image.open(self.abs_path) as image:
                     self.img_size = f'{image.size[0]} x {image.size[1]}'
                 return True
             except:
-                log += "\n Ошибка при просмотре изображения" + self.abs_path
+                log_save(f"Ошибка при просмотре изображения {self.abs_path}")
         return False
 
     def get_date(self):
@@ -83,11 +89,9 @@ class File:
             Orthallelous original source
             https://orthallelous.wordpress.com/2015/04/19/extracting-\
             date-and-time-from-images-with-python/"""
-        global log
         if self.is_image:
             dat = None
-            # for subsecond prec, see doi.org/10.3189/2013JoG12J126 , sect. 2.2,
-            # 2.3
+            # for subsecond prec, see doi.org/10.3189/2013JoG12J126 , sect. 2.2,2.3
             tags = [
                 (36867, 37521),  # (DateTimeOriginal, SubsecTimeOriginal)
                 # when img taken
@@ -96,11 +100,13 @@ class File:
                 (306, 37520), ]  # (DateTime, SubsecTime)#when file was changed
             try:
                 with Image.open(self.abs_path) as image:
-                    exif = image._getexif()
-                    if exif:
-                        for t in tags:
-                            dat = exif.get(t[0])
-                            # sub = exif.get(t[1], 0)
+                    self.exif = image._getexif()
+                    self.info = image.info
+                    print(self.exif)
+                    if self.exif:
+                        for tag in tags:
+                            dat = self.exif.get(tag[0])
+                            # sub = exif.get(tag[1], 0)
                             # PIL.PILLOW_VERSION >= 3.0 returns a tuple
                             dat = dat[0] if type(dat) == tuple else dat
                             # sub = sub[0] if type(sub) == tuple else sub
@@ -112,7 +118,7 @@ class File:
                         if str(dat)[:4] != '0000':
                             return str(dat)
             except:
-                log += "\n Ошибка при получении даты изображения" + self.abs_path
+                log_save(f"Ошибка при получении даты изображения {self.abs_path}")
         t = os.path.getmtime(self.abs_path)
         return str(dt.fromtimestamp(t))[:16]
 
@@ -123,32 +129,53 @@ class File:
         return self.name
 
     def do_flip(self):
-        with Image.open(self.abs_path) as image:
-            new_image = image.transpose(Image.FLIP_LEFT_RIGHT)
-            new_image.save(self.abs_path)
+        if self.is_image:
+            with Image.open(self.abs_path) as image:
+                new_image = image.transpose(Image.FLIP_LEFT_RIGHT)
+                new_image._exif = self.exif
+                new_image.save(self.abs_path)
 
     def do_left(self):
-        with Image.open(self.abs_path) as image:
-            new_image = image.transpose(Image.ROTATE_90)
-            new_image.save(self.abs_path)
+        if self.is_image:
+            with Image.open(self.abs_path) as image:
+                new_image = image.transpose(Image.ROTATE_90)
+                new_image._exif = self.exif
+                new_image.save(self.abs_path)
 
     def do_right(self):
-        with Image.open(self.abs_path) as image:
-            new_image = image.transpose(Image.ROTATE_270)
-            new_image.save(self.abs_path)
+        if self.is_image:
+            with Image.open(self.abs_path) as image:
+                new_image = image.transpose(Image.ROTATE_270)
+                new_image._exif = self.exif
+                new_image.save(self.abs_path)
 
     def mkdir(self, path):
         if not os.path.exists(path):
             os.makedirs(path)
 
     def move(self, new_path):
-        year = self.date[:4]
-        month = self.date[5:7]
-        self.mkdir(f'{new_path}{os.sep}{year}{os.sep}{month}')
-        shutil.move(self.abs_path, f'{new_path}{os.sep}{year}{os.sep}{month}{os.sep}{self.name}')
+        """Перемещение файла"""
+        try:
+            new_path = f'{new_path}{os.sep}{self.year}{os.sep}{self.month}'
+            self.mkdir(new_path)
+            shutil.move(self.abs_path, f'{new_path}{os.sep}{self.name}')
+            return "OK"
+        except:
+            return "Error 3"
 
     def copy(self, new_path):
-        pass
+        """Копирование файла. Чтобы сохранить все метаданные файла,
+            используется shutil.copy2()"""
+        try:
+            new_path = f'{new_path}{os.sep}{self.year}{os.sep}{self.month}'
+            self.mkdir(new_path)
+            shutil.copy2(self.abs_path, f'{new_path}{os.sep}{self.name}')
+            return "OK"
+        except:
+            if shutil.disk_usage(new_path).free < os.stat(self.abs_path).st_size:
+                return "Error 1"
+            return "Error 2"
+
 
 class Progress(QWidget):
 
@@ -235,15 +262,24 @@ class Progress(QWidget):
         while self.run:
             if not self.pause:
                 file = self.selected_files[self.filenames[self.step]]
-                self.do_action(file, self.filenames[self.step])
+                self.do_action(file)
                 self.next_step()
 
-    def do_action(self, file, filename):
+    def do_action(self, file):
         if self.action == "copy":
-            file.copy(self.new_path)
+            error = file.copy(self.new_path)
         else:
-            file.move(self.new_path)
-        print(filename)
+            error = file.move(self.new_path)
+        if error == "Error 1":
+            log_save(f"Ошибка копирования {file.name}. "
+                     f"Недостаточно места на диске {self.new_path}")
+            self.run = False
+            QMessageBox.warning(self, "Ошибка копирования",
+                                f"Недостаточно места на диске {self.new_path}")
+        elif error == "Error 2":
+            log_save(f"Ошибка копирования {file.abs_path} -> {self.new_path}")
+        elif error == "Error 3":
+            log_save(f"Ошибка перемещения {file.abs_path} -> {self.new_path}")
 
 
 class MainWindow(QWidget):
@@ -540,19 +576,16 @@ class MainWindow(QWidget):
         self.new_dir = QFileDialog.getExistingDirectory()
         if self.new_dir is not None and self.new_dir != "":
             self.path_to.setText(self.new_dir)
-            self.rbtn_move_to.setChecked(True)
         else:
             QMessageBox.warning(
                 self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
 
     def choose_folder_to2(self):
         if self.path_to.text():
-            if os.path.exists(self.path_to.text()):
-                self.new_dir = self.path_to.text()
-                self.rbtn_move_to.setChecked(True)
-            else:
-                QMessageBox.warning(
-                    self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
+            self.new_dir = self.path_to.text()
+        else:
+            QMessageBox.warning(
+                self, lang2["msg"][cur_lang], lang2["msg_path"][cur_lang])
 
     def set_folder_to(self):
         if self.rbtn_move.isChecked():
@@ -646,6 +679,7 @@ class QApp(QApplication):
 
 
 def main():
+    log_save(f"Start session {dt.strftime(dt.now(), '%A, %d %B %Y %I:%M%p')}")
     app = QApp([])
     mw = MainWindow()
     mw.show()
