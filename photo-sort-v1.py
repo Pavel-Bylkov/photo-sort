@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# ToDo Добавить обработку нажатия Кнопок убрать из списка и Удалить
 # ToDo Добавить Обработку выбора опций с видео файлами и передачу их в Прогресс
 
 
@@ -150,6 +149,12 @@ class File:
                 return "Error 1"
             return "Error 2"
 
+    def kill(self):
+        try:
+            os.remove(self.abs_path)
+            return "OK"
+        except:
+            return "Error"
 
 class Progress(QWidget):
 
@@ -332,9 +337,9 @@ class MainWindow(QWidget):
         self.widgets["btn_disable"] = self.btn_disable
         self.btn_del = QPushButton(lang1["btn_del"][lang])
         self.widgets["btn_del"] = self.btn_del
-        self.rbtn_all_files = QCheckBox(lang1["rbtn_all_files"][lang])
-        self.rbtn_all_files.setChecked(True)
-        self.widgets["rbtn_all_files"] = self.rbtn_all_files
+        self.chbx_all_files = QCheckBox(lang1["chbx_all_files"][lang])
+        self.chbx_all_files.setChecked(True)
+        self.widgets["chbx_all_files"] = self.chbx_all_files
         self.gb_mode = QGroupBox(lang2["gb_mode"][lang])
         self.rbtn_move = QRadioButton(lang1["rbtn_move"][lang])
         self.rbtn_move.setChecked(True)
@@ -383,7 +388,7 @@ class MainWindow(QWidget):
         col5.addWidget(self.lb_info)
         row2.addLayout(col5, 20)
         col1 = QVBoxLayout()
-        col1.addWidget(self.rbtn_all_files)
+        col1.addWidget(self.chbx_all_files)
         col1.addWidget(self.lb_image, 90)  # alignment=Qt.AlignCenter
 
         row5 = QHBoxLayout()
@@ -453,11 +458,11 @@ class MainWindow(QWidget):
         self.lw_dirs.doubleClicked.connect(self.change_folder_from)
         self.lang_switch.clicked.connect(self.lang_click)
         self.rbtn_move.toggled.connect(self.set_folder_to)
-        self.rbtn_all_files.clicked.connect(self.set_all_files)
+        self.chbx_all_files.clicked.connect(self.set_all_files)
         self.path_to.editingFinished.connect(self.choose_folder_to2)
         self.btn_to.clicked.connect(self.choose_folder_to)
-        # self.btn_disable.clicked.connect()
-        # self.btn_del.clicked.connect()
+        self.btn_disable.clicked.connect(self.del_from_files)
+        self.btn_del.clicked.connect(self.del_from_disk)
 
     def set_appear(self):
         """устанавливает, как будет выглядеть окно (надпись, размер)"""
@@ -481,6 +486,7 @@ class MainWindow(QWidget):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         self.workdir = QFileDialog.getExistingDirectory(parent=self, options=options)
+        #self.workdir = QFileDialog.getExistingDirectory(parent=self)
         if self.workdir is None or self.workdir == "":
             return False
         return True
@@ -519,6 +525,21 @@ class MainWindow(QWidget):
             del self.selected_files[self.filename]
             self.filename = ""
             self.current_file = None
+            self.update_lw_files()
+            self.lb_image.clear()
+            self.lb_image.setText(lang1["lb_image"][lang])
+            self.lb_ratio_data.setText("")
+            self.lb_filesize_data.setText('')
+            self.lb_data_data.setText('')
+
+    def del_from_disk(self):
+        if self.lw_files.selectedItems():
+            file = self.selected_files[self.filename]
+            self.del_from_files()
+            error = file.kill()
+            if error == "Error":
+                log_save(f"Ошибка удаления {file.abs_path}.")
+                QMessageBox.warning(self, f"Ошибка удаления {file.abs_path}.")
 
 
     def set_all_files(self):
@@ -534,7 +555,7 @@ class MainWindow(QWidget):
         self.files = {}
         self.dirs = []
         for root, dirs, files in os.walk(self.workdir):
-            if self.rbtn_all_files.isChecked() or root == self.workdir:
+            if self.chbx_all_files.isChecked() or root == self.workdir:
                     self.add_in_files(root, files)
             if root == self.workdir:
                 self.dirs = dirs[:]

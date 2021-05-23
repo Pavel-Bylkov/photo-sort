@@ -64,7 +64,7 @@ lang1 = {
     "btn_disable": {
         "ru": "Убрать из списка",
         "en": ""},
-    "rbtn_all_files": {
+    "chbx_all_files": {
         "ru": "Все файлы, включая подпапки (рекурсивно)",
         "en": ""},
     "btn_del": {
