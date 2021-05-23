@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-# ToDo Добавить Обработку выбора опций с видео файлами и передачу их в Прогресс
-
 
 import os
 import shutil
@@ -126,21 +124,36 @@ class File:
         if not os.path.exists(path):
             os.makedirs(path)
 
-    def move(self, new_path):
+    def get_new_path(self, new_path, video_folder):
+        if video_folder == "all":
+            new_path = f'{new_path}{os.sep}{self.year}{os.sep}{self.month}'
+        elif video_folder == "into":
+            if self.is_image:
+                new_path = f'{new_path}{os.sep}{self.year}{os.sep}{self.month}{os.sep}images'
+            elif self.is_video:
+                new_path = f'{new_path}{os.sep}{self.year}{os.sep}{self.month}{os.sep}video'
+        else:
+            if self.is_image:
+                new_path = f'{new_path}{os.sep}images{os.sep}{self.year}{os.sep}{self.month}'
+            elif self.is_video:
+                new_path = f'{new_path}{os.sep}video{os.sep}{self.year}{os.sep}{self.month}'
+        return new_path
+
+    def move(self, new_path, video_folder):
         """Перемещение файла"""
         try:
-            new_path = f'{new_path}{os.sep}{self.year}{os.sep}{self.month}'
+            new_path = self.get_new_path(new_path, video_folder)
             self.mkdir(new_path)
             shutil.move(self.abs_path, f'{new_path}{os.sep}{self.name}')
             return "OK"
         except:
             return "Error 3"
 
-    def copy(self, new_path):
+    def copy(self, new_path, video_folder):
         """ Копирование файла. Чтобы сохранить все метаданные файла,
             используется shutil.copy2()"""
         try:
-            new_path = f'{new_path}{os.sep}{self.year}{os.sep}{self.month}'
+            new_path = self.get_new_path(new_path, video_folder)
             self.mkdir(new_path)
             shutil.copy2(self.abs_path, f'{new_path}{os.sep}{self.name}')
             return "OK"
@@ -158,7 +171,7 @@ class File:
 
 class Progress(QWidget):
 
-    def __init__(self, title, selected_files, new_path, action,
+    def __init__(self, title, selected_files, new_path, action, video_folder,
                  parent=None, flags=Qt.WindowFlags()):
         """Окно для визуализации прогресса"""
         super().__init__(parent=parent, flags=flags)
@@ -167,6 +180,7 @@ class Progress(QWidget):
         self.filenames = list(selected_files.keys())
         self.new_path = new_path
         self.action = action
+        self.video_folder = video_folder
         self.pause = False
         self.step = 0
         self.max_step = len(self.selected_files)
@@ -246,9 +260,9 @@ class Progress(QWidget):
 
     def do_action(self, file):
         if self.action == "copy":
-            error = file.copy(self.new_path)
+            error = file.copy(self.new_path, self.video_folder)
         else:
-            error = file.move(self.new_path)
+            error = file.move(self.new_path, self.video_folder)
         if error == "Error 1":
             log_save(f"Ошибка копирования {file.name}. "
                      f"Недостаточно места на диске {self.new_path}")
@@ -349,12 +363,12 @@ class MainWindow(QWidget):
         self.rbtn_copy_to = QRadioButton(lang1["rbtn_copy_to"][lang])
         self.widgets["rbtn_copy_to"] = self.rbtn_copy_to
         self.gb_video = QGroupBox(lang2["gb_video"][lang])
-        self.rbtn_1 = QRadioButton(lang1["rbtn_1"][lang])
+        self.rbtn_1 = QRadioButton(lang1["rbtn_1"][lang])  # Вместе с фото
         self.rbtn_1.setChecked(True)
         self.widgets["rbtn_1"] = self.rbtn_1
-        self.rbtn_2 = QRadioButton(lang1["rbtn_2"][lang])
+        self.rbtn_2 = QRadioButton(lang1["rbtn_2"][lang])  # В подпапки
         self.widgets["rbtn_2"] = self.rbtn_2
-        self.rbtn_3 = QRadioButton(lang1["rbtn_3"][lang])
+        self.rbtn_3 = QRadioButton(lang1["rbtn_3"][lang])  # Разделить на Фото и Видео
         self.widgets["rbtn_3"] = self.rbtn_3
         self.btn_run = QPushButton(lang1["btn_run"][lang])
         self.widgets["btn_run"] = self.btn_run
@@ -442,9 +456,14 @@ class MainWindow(QWidget):
 
     def run_click(self):
         action = "copy" if self.rbtn_copy_to.isChecked() else "move"
+        video_folder = "all"
+        if self.rbtn_2.isChecked():
+            video_folder = "into"
+        if self.rbtn_3.isChecked():
+            video_folder = "outside"
         if self.new_dir:
             title = lang2["copy"][lang] if action == "copy" else lang2["move"][lang]
-            self.progress = Progress(title, self.selected_files, self.new_dir, action)
+            self.progress = Progress(title, self.selected_files, self.new_dir, action, video_folder)
         else:
             QMessageBox.warning(
                 self, lang2["msg"][lang], lang2["msg_path"][lang])
