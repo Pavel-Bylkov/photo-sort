@@ -456,6 +456,8 @@ class MainWindow(QWidget):
         self.rbtn_all_files.clicked.connect(self.set_all_files)
         self.path_to.editingFinished.connect(self.choose_folder_to2)
         self.btn_to.clicked.connect(self.choose_folder_to)
+        # self.btn_disable.clicked.connect()
+        # self.btn_del.clicked.connect()
 
     def set_appear(self):
         """устанавливает, как будет выглядеть окно (надпись, размер)"""
@@ -511,6 +513,12 @@ class MainWindow(QWidget):
                     self.files[new_name] = f
                 if f.ext not in self.extensions:
                     self.extensions.append(f.ext)
+
+    def del_from_files(self):
+        if self.lw_files.selectedItems():
+            del self.selected_files[self.filename]
+            self.filename = ""
+            self.current_file = None
 
 
     def set_all_files(self):

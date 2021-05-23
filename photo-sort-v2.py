@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # ToDo Добавить обработку нажатия Кнопок убрать из списка и Удалить
 #! ToDo Доработать функции поворота фотографий - затирают метаданные
+# возможное решение
+# https://stackoverflow.com/questions/8770121/copying-and-writing-exif-information-from-one-image-to-another-using-pyexiv2
 # ToDo Добавить Обработку выбора опций с видео файлами и передачу их в Прогресс
 
 
