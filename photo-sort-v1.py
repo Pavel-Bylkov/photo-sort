@@ -62,7 +62,7 @@ class File:
         self.name = new_name
         return new_name
 
-    def __lt__(self, other):
+    def __lt__(self, other):  # file1 < file2
         return self.name < other.name
 
     def __gt__(self, other):
