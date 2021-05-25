@@ -23,7 +23,8 @@ from hashlib import md5
 from uuid import uuid4
 from datetime import datetime as dt
 
-from config import *
+from src.config import *
+from src.languages import lang1, lang2
 
 log_file = "log.txt"
 
